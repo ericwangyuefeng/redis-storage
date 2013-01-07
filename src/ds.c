@@ -565,31 +565,6 @@ void ds_hgetall(redisClient *c)
     return ;
 }
 
-static void addHashIteratorCursorToReply(redisClient *c, hashTypeIterator *hi, int what) {
-    if (hi->encoding == REDIS_ENCODING_ZIPLIST) {
-        unsigned char *vstr = NULL;
-        unsigned int vlen = UINT_MAX;
-        long long vll = LLONG_MAX;
-
-        hashTypeCurrentFromZiplist(hi, what, &vstr, &vlen, &vll);
-        if (vstr) {
-            addReplyBulkCBuffer(c, vstr, vlen);
-        } else {
-            addReplyBulkLongLong(c, vll);
-        }
-
-    } else if (hi->encoding == REDIS_ENCODING_HT) {
-        robj *value;
-
-        hashTypeCurrentFromHashTable(hi, what, &value);
-        addReplyBulk(c, value);
-
-    } else {
-        redisPanic("Unknown hash encoding");
-    }
-}
-
-
 void ds_hdel(redisClient *c)
 {
 	const char *key;
