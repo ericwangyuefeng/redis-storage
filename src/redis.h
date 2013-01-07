@@ -1245,6 +1245,9 @@ void ds_delete(redisClient *c);
 void rl_delete(redisClient *c);
 void rl_get(redisClient *c);
 void rl_set(redisClient *c);
+void rl_hget(redisClient *c);
+void rl_hset(redisClient *c);
+void rl_hdel(redisClient *c);
 
 
 #define redisDebug(fmt, ...) \
