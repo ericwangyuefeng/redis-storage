@@ -432,7 +432,7 @@ void ds_hset(redisClient *c)
 	leveldb_writebatch_destroy(wb);
     sdsfree(str);
     
-    addReply(c,shared.ok);
+    addReply(c, shared.czero);
     return ;
 }
 
