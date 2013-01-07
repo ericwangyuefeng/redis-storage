@@ -426,8 +426,8 @@ void ds_hset(redisClient *c)
 
 void rl_hset(redisClient *c)
 {
-    ds_hset(*c);
-    hsetCommand(*c);
+    ds_hset(c);
+    hsetCommand(c);
 }
 
 void rl_hdel(redisClient *c)
