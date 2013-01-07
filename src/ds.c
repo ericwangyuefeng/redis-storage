@@ -420,7 +420,7 @@ void ds_hset(redisClient *c)
 	leveldb_writebatch_destroy(wb);
     sdsfree(str);
     
-    addReply(c, shared.czero);
+    addReply(c, shared.cone);
     return ;
 }
 
@@ -480,7 +480,7 @@ void rl_hdel(redisClient *c)
         signalModifiedKey(c->db,c->argv[1]);
         server.dirty += deleted;
     }
-    
+
     ds_hdel(c);
 }
 
@@ -563,6 +563,30 @@ void ds_hgetall(redisClient *c)
     leveldb_iter_destroy(iter);
     leveldb_readoptions_destroy(roptions);
     return ;
+}
+
+static void addHashIteratorCursorToReply(redisClient *c, hashTypeIterator *hi, int what) {
+    if (hi->encoding == REDIS_ENCODING_ZIPLIST) {
+        unsigned char *vstr = NULL;
+        unsigned int vlen = UINT_MAX;
+        long long vll = LLONG_MAX;
+
+        hashTypeCurrentFromZiplist(hi, what, &vstr, &vlen, &vll);
+        if (vstr) {
+            addReplyBulkCBuffer(c, vstr, vlen);
+        } else {
+            addReplyBulkLongLong(c, vll);
+        }
+
+    } else if (hi->encoding == REDIS_ENCODING_HT) {
+        robj *value;
+
+        hashTypeCurrentFromHashTable(hi, what, &value);
+        addReplyBulk(c, value);
+
+    } else {
+        redisPanic("Unknown hash encoding");
+    }
 }
 
 
