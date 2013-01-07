@@ -426,14 +426,62 @@ void ds_hset(redisClient *c)
 
 void rl_hset(redisClient *c)
 {
-    ds_hset(c);
+    sds str;
+    char *key, *field, *value, *err;
+    leveldb_writeoptions_t *woptions;
+    leveldb_writebatch_t   *wb;
+    
+    key   = (char *)c->argv[1]->ptr;
+    field = (char *)c->argv[2]->ptr;
+    value = (char *)c->argv[3]->ptr;
+    
+    woptions = leveldb_writeoptions_create();
+    wb       = leveldb_writebatch_create();
+    
+    str      = sdsempty();
+    str      = sdscpy(str, key);
+    str      = sdscatlen(str, "*", 1);
+            
+    leveldb_writebatch_put(wb, str, sdslen(str), "1", 1);
+    
+    sdsclear(str);
+    str      = sdscpy(str, key);
+    str      = sdscatlen(str, "*", 1);
+    str      = sdscat(str, field);
+    leveldb_writebatch_put(wb, str, sdslen(str), value, sdslen((sds)value));
+    
+    leveldb_write(server.ds_db, woptions, wb, &err);
+    
+    leveldb_writeoptions_destroy(woptions);
+    leveldb_writebatch_destroy(wb);
+    sdsfree(str);
+
     hsetCommand(c);
 }
 
 void rl_hdel(redisClient *c)
 {
+    robj *o;
+    int j, deleted = 0;
+
+    if ((o = lookupKeyWriteOrReply(c,c->argv[1],shared.czero)) == NULL ||
+        checkType(c,o,REDIS_HASH)) return;
+
+    for (j = 2; j < c->argc; j++) {
+        if (hashTypeDelete(o,c->argv[j])) {
+            deleted++;
+            if (hashTypeLength(o) == 0) {
+                dbDelete(c->db,c->argv[1]);
+                break;
+            }
+        }
+    }
+    if (deleted) {
+        signalModifiedKey(c->db,c->argv[1]);
+        server.dirty += deleted;
+    }
+    
     ds_hdel(c);
-    hdelCommand(c);
 }
 
 void ds_hgetall(redisClient *c)
