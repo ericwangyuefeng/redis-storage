@@ -1,25 +1,11 @@
-新增加字符串函数
+redis-storage manual
 =========
-<pre>
-ds_append
-ds_incrby
-</pre>
+[https://github.com/qiye/redis-storage/wiki/redis-storage-manual](https://github.com/qiye/redis-storage/wiki/redis-storage-manual)
 
-新增加类似redis的hashs功能,用法一样
+overview
 =========
-<pre>
-ds_hdel
-ds_hget
-ds_hset
-ds_hmget
-ds_hmset
-ds_hincrby
-ds_hgetall
-</pre>
-
-redis-storage
-=========
-  - 基于最新的redis-2.6.7开发的
+  - 基于最新的redis-2.6.7, leveldb开发的,实现海量、高效数据持久存储
+  - 实现redis的string和hashs功能函数,完全兼容redis客户端
   - 用luajit替换LUA,增强lua执行性能
   - author: 七夜, shenzhe
   - QQ: 531020471
@@ -28,20 +14,19 @@ redis-storage
   - mail: lijinxing@gmail.com, shenzhe163@gmail.com
 
 
-    
-安装 redis-storage
+Install
 =========
 <pre>
-https://github.com/qiye/redis-storage 获取源码
+https://github.com/qiye/redis-storage/archive/master.zip get source code
     
 make init
 make MALLOC=tcmalloc_minimal
 
-这一步需要root权限
+need root
 make install PREFIX=/usr/local/redis
 </pre>
 
-修改redis配置文件
+redis.conf
 =========
 <pre>
 ds:create_if_missing 1                //if the specified database didn't exist will create a new one
@@ -53,29 +38,6 @@ ds:block_size 4096
 ds:max_open_files 8000               //leveldb最多可以使用的檔案數，一個檔案可以儲存 2MB 的資料。
 ds:block_restart_interval 16
 ds:path /usr/local/redis/db/leveldb  //leveldb save path
-</pre>
-
-redis new cmd 用法跟redis的一样
-=========
-<pre>
-ds_append
-ds_incrby
-ds_hdel
-ds_hget
-ds_hset
-ds_hmget
-ds_hmset
-ds_hincrby
-ds_hgetall    
-ds_set name qiye
-ds_get name
-ds_del name 
-ds_mset key value age 20
-ds_mget key age
-ds_del key age
-rl_set name shenzhe  //先把数据存到leveldb，再存到redis
-rl_get name          //先尝试从redis取数据，如没取到，再尝试从redis取数据
-rl_del name          //先从leveldb删除数据，再从redis删除数据
 </pre>
 
 
