@@ -440,7 +440,7 @@ void rl_hset(redisClient *c)
     
     str      = sdsempty();
     str      = sdscpy(str, key);
-    str      = sdscatlen(str, "*", 1);s
+    str      = sdscatlen(str, "*", 1);
             
     leveldb_writebatch_put(wb, str, sdslen(str), "1", 1);
     
