@@ -977,7 +977,41 @@ void ds_delete(redisClient *c)
 
 void rl_delete(redisClient *c)
 {
-	ds_delete(c);
+	int  i;
+    char *key;
+    char *err = NULL;
+    leveldb_writebatch_t   *wb;
+    
+    if(c->argc < 3)
+    {
+        key   = (char *)c->argv[1]->ptr;
+        leveldb_delete(server.ds_db, server.woptions, key, sdslen((sds)key), &err);
+        if(err != NULL)
+        {
+            addReplyError(c, err);
+            leveldb_free(err);
+            return ;
+        }
+        return ;
+    }
+    
+    wb = leveldb_writebatch_create();
+    for(i=1; i<c->argc; i++)
+    {
+        leveldb_writebatch_delete(wb, (char *)c->argv[i]->ptr, sdslen((sds)c->argv[i]->ptr));
+    }
+    leveldb_write(server.ds_db, server.woptions, wb, &err);
+    leveldb_writebatch_clear(wb);
+    leveldb_writebatch_destroy(wb);
+    wb = NULL;
+
+    if(err != NULL)
+    {
+        addReplyError(c, err);
+        leveldb_free(err);
+        return ;
+    }
+
     delCommand(c);
 }
 
