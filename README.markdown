@@ -1,3 +1,10 @@
+新增两条命令
+=========
+<pre>
+- ds_exists
+- ds_hexists
+具体使用方法见 redis-storage manual
+</pre>    
 redis-storage manual
 =========
 [https://github.com/qiye/redis-storage/wiki/redis-storage-manual](https://github.com/qiye/redis-storage/wiki/redis-storage-manual)

@@ -500,6 +500,10 @@ struct redisServer {
 	leveldb_cache_t        *ds_cache;
 	leveldb_options_t      *ds_options;
     leveldb_filterpolicy_t *policy;
+    leveldb_writeoptions_t *woptions;
+    leveldb_readoptions_t  *roptions;
+    //leveldb_iterator_t     *iter;
+    
 	
 	uint16_t     ds_lru_cache;
     uint16_t     ds_create_if_missing;

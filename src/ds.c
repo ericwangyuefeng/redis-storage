@@ -77,19 +77,167 @@ void ds_init()
 		leveldb_free(err);
 		exit(1);
 	}
+    
+    server.woptions = leveldb_writeoptions_create();
+	server.roptions = leveldb_readoptions_create();
+	leveldb_readoptions_set_verify_checksums(server.roptions, 0);
+	leveldb_readoptions_set_fill_cache(server.roptions, 1);    
+    
+    leveldb_writeoptions_set_sync(server.woptions, 0);
 }
+
+void ds_exists(redisClient *c)
+{
+    int                   i;
+    char                  *err;
+    leveldb_iterator_t    *iter;
+    
+    iter     = leveldb_create_iterator(server.ds_db, server.roptions);
+    addReplyMultiBulkLen(c, c->argc-1);
+	for(i=1; i<c->argc; i++)
+	{
+        leveldb_iter_seek(iter, c->argv[i]->ptr, sdslen((sds)c->argv[i]->ptr));
+        if(leveldb_iter_valid(iter))
+            addReplyLongLong(c, 1);
+        else
+            addReplyLongLong(c, 0);
+	}
+    
+    err = NULL;
+    leveldb_iter_get_error(iter, &err);
+    leveldb_iter_destroy(iter);
+    
+    if(err != NULL)
+    {
+		addReplyError(c, err);
+        leveldb_free(err);
+
+        return ;
+    }
+    
+    return ;
+}
+
+void ds_hexists(redisClient *c)
+{
+    int                   i;
+    sds                   key;
+    char                  *err;
+    leveldb_iterator_t    *iter;
+    
+    key      = sdsempty();
+    iter     = leveldb_create_iterator(server.ds_db, server.roptions);
+    addReplyMultiBulkLen(c, c->argc-2);
+	for(i=2; i<c->argc; i++)
+	{
+        sdsclear(key);
+        key      = sdscpy(key, c->argv[1]->ptr);
+        key      = sdscatlen(key, "*", 1);
+        key      = sdscat(key, c->argv[i]->ptr);
+        
+        leveldb_iter_seek(iter, key, sdslen(key));
+        if(leveldb_iter_valid(iter))
+            addReplyLongLong(c, 1);
+        else
+            addReplyLongLong(c, 0);
+	}
+    
+    err = NULL;
+    leveldb_iter_get_error(iter, &err);
+    leveldb_iter_destroy(iter);
+    sdsfree(key);
+    if(err != NULL)
+    {
+		addReplyError(c, err);
+        leveldb_free(err);
+
+        return ;
+    }
+    
+    return ;
+}
+/*
+void ds_seek_asc(redisClient *c)
+{
+    sds str, header;
+    char *keyword = NULL;
+    
+    ulong limit;
+    const char *key;
+    size_t key_len, len, i;
+    
+    limit    = 0;
+    limit    = strtoul(c->argv[1]->ptr, NULL, 10);
+    
+    i       = 0;
+    len     = 0;
+    str     = sdsempty();
+    for(leveldb_iter_seek_to_first(server.iter); leveldb_iter_valid(server.iter); leveldb_iter_next(server.iter))
+    {
+        key_len = 0;
+        key     = leveldb_iter_key(server.iter, &key_len);
+        
+        if(key[(key_len-1)] == '*')
+        {
+            if(keyword != NULL)
+            {
+                zfree(keyword);
+                keyword = NULL;
+            }
+            len     = key_len;
+            keyword = zmalloc(key_len+1);
+            strncpy(keyword, key, key_len);
+            str     = sdscatprintf(str, "$%zu\r\n", (key_len-1));
+            str     = sdscatlen(str, key, key_len-1);
+            str     = sdscatlen(str, "\r\n", 2);
+            i++;
+        }
+        else if((keyword != NULL) && (strncmp(keyword, key, len) == 0))
+        {
+            continue;
+        }
+        else
+        {
+            str = sdscatprintf(str, "$%zu\r\n", key_len);
+            str = sdscatlen(str, key, key_len);
+            str = sdscatlen(str, "\r\n", 2);
+            i++;
+        }
+
+        if(limit != 0 && i == limit)
+            break;
+        
+    }
+    
+    if(keyword != NULL)
+    {
+        zfree(keyword);
+        keyword = NULL;
+    }
+    
+    if(i == 0)
+    {
+        addReply(c,shared.nullbulk);
+    }
+    else
+    {   
+        header = sdsempty();
+        header = sdscatprintf(header, "*%zu\r\n", i);
+        header = sdscatlen(header, str, sdslen(str));
+        
+        addReplySds(c, header);
+        sdsfree(str);
+        sdsfree(header);
+    }
+    return ;
+}
+*/
 
 void ds_mget(redisClient *c)
 {
 	int i;
 	size_t val_len;
     char *err, *value;
-    
-	leveldb_readoptions_t *roptions;
-    
-	roptions = leveldb_readoptions_create();
-	leveldb_readoptions_set_verify_checksums(roptions, 0);
-	leveldb_readoptions_set_fill_cache(roptions, 1);
 
 	addReplyMultiBulkLen(c,c->argc-1);
 	for(i=1; i<c->argc; i++)
@@ -97,13 +245,12 @@ void ds_mget(redisClient *c)
 		err     = NULL;
 		value   = NULL;
 		val_len = 0;
-		value   = leveldb_get(server.ds_db, roptions, c->argv[i]->ptr, sdslen((sds)c->argv[i]->ptr), &val_len, &err);
+		value   = leveldb_get(server.ds_db, server.roptions, c->argv[i]->ptr, sdslen((sds)c->argv[i]->ptr), &val_len, &err);
 	    if(err != NULL)
 		{
 			addReplyError(c, err);
 			leveldb_free(err);
 			leveldb_free(value);
-			leveldb_readoptions_destroy(roptions);
 			return ;
 		}
 		else if(val_len > 0)
@@ -118,7 +265,6 @@ void ds_mget(redisClient *c)
 
 		}
 	}
-	leveldb_readoptions_destroy(roptions);
 }
 
 void ds_get(redisClient *c)
@@ -128,16 +274,10 @@ void ds_get(redisClient *c)
     char *key   = NULL;
     char *value = NULL;
     
-	leveldb_readoptions_t *roptions;
-    
-	roptions = leveldb_readoptions_create();
-	leveldb_readoptions_set_verify_checksums(roptions, 0);
-	leveldb_readoptions_set_fill_cache(roptions, 1);
     
     err   = NULL;
     key   = (char *)c->argv[1]->ptr;
-    value = leveldb_get(server.ds_db, roptions, key, sdslen((sds)key), &val_len, &err);
-    leveldb_readoptions_destroy(roptions);
+    value = leveldb_get(server.ds_db, server.roptions, key, sdslen((sds)key), &val_len, &err);
     if(err != NULL)
     {
 		addReplyError(c, err);
@@ -179,7 +319,7 @@ void ds_mset(redisClient *c)
 	int    i;
 	char *key, *value;
     char *err = NULL;
-    leveldb_writeoptions_t *woptions;
+
 	leveldb_writebatch_t   *wb;
 
     if((c->argc%2) == 0)
@@ -189,7 +329,6 @@ void ds_mset(redisClient *c)
     }
 
 	
-	woptions = leveldb_writeoptions_create();
 	wb       = leveldb_writebatch_create();
 	for(i=1; i<c->argc; i++)
 	{
@@ -197,8 +336,7 @@ void ds_mset(redisClient *c)
 		value = (char *)c->argv[++i]->ptr;
 		leveldb_writebatch_put(wb, key, sdslen((sds)key), value, sdslen((sds)value));
 	}
-	leveldb_write(server.ds_db, woptions, wb, &err);
-	leveldb_writeoptions_destroy(woptions);
+	leveldb_write(server.ds_db, server.woptions, wb, &err);
 	leveldb_writebatch_destroy(wb);
 
 	if(err != NULL)
@@ -222,13 +360,6 @@ void ds_hincrby(redisClient *c)
     char *err = NULL;
     
     int64_t val, recore;
-    leveldb_writeoptions_t *woptions;
-	leveldb_readoptions_t *roptions;
-    
-    
-	roptions = leveldb_readoptions_create();
-	leveldb_readoptions_set_verify_checksums(roptions, 0);
-	leveldb_readoptions_set_fill_cache(roptions, 1);
     
     err     = NULL;
     val_len = 0;
@@ -237,9 +368,7 @@ void ds_hincrby(redisClient *c)
     keyword = sdscatlen(keyword, "*", 1);
     keyword = sdscat(keyword, c->argv[2]->ptr);
     
-    value = leveldb_get(server.ds_db, roptions, keyword, sdslen(keyword), &val_len, &err);
-    leveldb_readoptions_destroy(roptions);
-
+    value = leveldb_get(server.ds_db, server.roptions, keyword, sdslen(keyword), &val_len, &err);
     if(err != NULL)
 	{
         sdsfree(keyword);
@@ -262,9 +391,7 @@ void ds_hincrby(redisClient *c)
     recore   = val + recore;
     data     = sdsfromlonglong(recore);
     
-    woptions = leveldb_writeoptions_create();
-    leveldb_put(server.ds_db, woptions, keyword, sdslen(keyword), data, sdslen(data), &err);
-    leveldb_writeoptions_destroy(woptions);
+    leveldb_put(server.ds_db, server.woptions, keyword, sdslen(keyword), data, sdslen(data), &err);
     if(err != NULL)
     {
 		addReplyError(c, err);
@@ -288,11 +415,6 @@ void ds_hmget(redisClient *c)
     size_t val_len;
     char *key, *err = NULL, *value = NULL;
     
-	leveldb_readoptions_t *roptions;
-    
-	roptions = leveldb_readoptions_create();
-	leveldb_readoptions_set_verify_checksums(roptions, 0);
-	leveldb_readoptions_set_fill_cache(roptions, 1);
 
 	addReplyMultiBulkLen(c, c->argc-2);
     
@@ -310,14 +432,13 @@ void ds_hmget(redisClient *c)
         keyword = sdscatlen(keyword, "*", 1); 
         keyword = sdscat(keyword, c->argv[i]->ptr);
         
-		value   = leveldb_get(server.ds_db, roptions, keyword, sdslen(keyword), &val_len, &err);
+		value   = leveldb_get(server.ds_db, server.roptions, keyword, sdslen(keyword), &val_len, &err);
 	    if(err != NULL)
 		{
             sdsfree(keyword);
 			leveldb_free(err);
 			leveldb_free(value);
             addReplyError(c, err);
-			leveldb_readoptions_destroy(roptions);
 			return ;
 		}
 		else if(val_len > 0)
@@ -334,7 +455,6 @@ void ds_hmget(redisClient *c)
 	}
     
     sdsfree(keyword);
-	leveldb_readoptions_destroy(roptions);
 }
 
 void ds_hmset(redisClient *c)
@@ -343,7 +463,6 @@ void ds_hmset(redisClient *c)
     sds  keyword;
 	char *key, *field, *value;
     char *err = NULL;
-    leveldb_writeoptions_t *woptions;
 	leveldb_writebatch_t   *wb;
     
     if((c->argc%2) != 0)
@@ -353,7 +472,6 @@ void ds_hmset(redisClient *c)
     }
 	
     keyword  = sdsempty();
-	woptions = leveldb_writeoptions_create();
 	wb       = leveldb_writebatch_create();
     key      = (char *)c->argv[1]->ptr;
 
@@ -373,8 +491,7 @@ void ds_hmset(redisClient *c)
 	}
     sdsfree(keyword);
     
-	leveldb_write(server.ds_db, woptions, wb, &err);
-	leveldb_writeoptions_destroy(woptions);
+	leveldb_write(server.ds_db, server.woptions, wb, &err);
 	leveldb_writebatch_destroy(wb);
 
 	if(err != NULL)
@@ -392,14 +509,12 @@ void ds_hset(redisClient *c)
 {
     sds str;
     char *key, *field, *value, *err;
-    leveldb_writeoptions_t *woptions;
 	leveldb_writebatch_t   *wb;
     
     key   = (char *)c->argv[1]->ptr;
     field = (char *)c->argv[2]->ptr;
     value = (char *)c->argv[3]->ptr;
     
-	woptions = leveldb_writeoptions_create();
 	wb       = leveldb_writebatch_create();
     
     str      = sdsempty();
@@ -414,13 +529,11 @@ void ds_hset(redisClient *c)
     str      = sdscat(str, field);
     leveldb_writebatch_put(wb, str, sdslen(str), value, sdslen((sds)value));
     
-	leveldb_write(server.ds_db, woptions, wb, &err);
-    
-	leveldb_writeoptions_destroy(woptions);
+	leveldb_write(server.ds_db, server.woptions, wb, &err);
 	leveldb_writebatch_destroy(wb);
     sdsfree(str);
     
-    addReply(c, shared.cone);
+    addReply(c,shared.cone);
     return ;
 }
 
@@ -428,14 +541,12 @@ void rl_hset(redisClient *c)
 {
     sds str;
     char *key, *field, *value, *err;
-    leveldb_writeoptions_t *woptions;
     leveldb_writebatch_t   *wb;
     
     key   = (char *)c->argv[1]->ptr;
     field = (char *)c->argv[2]->ptr;
     value = (char *)c->argv[3]->ptr;
     
-    woptions = leveldb_writeoptions_create();
     wb       = leveldb_writebatch_create();
     
     str      = sdsempty();
@@ -450,11 +561,10 @@ void rl_hset(redisClient *c)
     str      = sdscat(str, field);
     leveldb_writebatch_put(wb, str, sdslen(str), value, sdslen((sds)value));
     
-    leveldb_write(server.ds_db, woptions, wb, &err);
-    
-    leveldb_writeoptions_destroy(woptions);
+    leveldb_write(server.ds_db, server.woptions, wb, &err);
     leveldb_writebatch_destroy(wb);
     sdsfree(str);
+    
 
     hsetCommand(c);
 }
@@ -487,84 +597,69 @@ void rl_hdel(redisClient *c)
 void ds_hgetall(redisClient *c)
 {
     sds str, header;
-    char *keyword = NULL;
+    char *keyword = NULL, *err;
+    
+    leveldb_iterator_t    *iter;
     
     const char *key, *value;
     size_t key_len, value_len, len, i;
     
-    leveldb_iterator_t    *iter;
-    leveldb_readoptions_t *roptions;
-    
-	roptions = leveldb_readoptions_create();
-	leveldb_readoptions_set_verify_checksums(roptions, 0);
-	leveldb_readoptions_set_fill_cache(roptions, 1);
-    
     i       = 0;
     str     = sdsempty();
-    iter    = leveldb_create_iterator(server.ds_db, roptions);
-    
     
     str     = sdscpy(str, c->argv[1]->ptr);
     str     = sdscatlen(str, "*", 1);
     len     = sdslen(str);
     keyword = zmalloc(len+1);
     memcpy(keyword, str, len);
-
-    leveldb_iter_seek(iter, keyword, len);
-    
-    if(!leveldb_iter_valid(iter))
-    {
-        sdsfree(str);
-        zfree(keyword);
-        addReply(c,shared.nullbulk);
-        leveldb_iter_destroy(iter);
-        leveldb_readoptions_destroy(roptions);
-        return ;
-    }
     
     sdsclear(str);
-    
-    while(1)
+    iter = leveldb_create_iterator(server.ds_db, server.roptions);
+    for(leveldb_iter_seek(iter, keyword, len); leveldb_iter_valid(iter); leveldb_iter_next(iter))
     {
-        leveldb_iter_next(iter);
-        if(!leveldb_iter_valid(iter))
-            break;
         
         key_len = value_len = 0;
         key   = leveldb_iter_key(iter, &key_len);
         value = leveldb_iter_value(iter, &value_len);
         
-        if(strncmp(keyword, key, len) != 0)
+        if(key_len == len)
+            continue;
+        else if(strncmp(keyword, key, len) != 0)
             break;
         
-        str = sdscatprintf(str, "$%lu\r\n", key_len-len);
+        str = sdscatprintf(str, "$%zu\r\n", (key_len-len));
         str = sdscatlen(str, key+len, key_len-len);
-        str = sdscatprintf(str, "\r\n$%lu\r\n", value_len);
+        str = sdscatprintf(str, "\r\n$%zu\r\n", value_len);
         str = sdscatlen(str, value, value_len);
         str = sdscatlen(str, "\r\n", 2);
         
         i++;
     }
-    
+    err = NULL;
+    zfree(keyword);
+    leveldb_iter_get_error(iter, &err);
     leveldb_iter_destroy(iter);
-    leveldb_readoptions_destroy(roptions);
     
-    if(i == 0)
+    if(err)
+    {
+		addReplyError(c, err);
+		leveldb_free(err);
+    }
+    else if(i == 0)
     {
         addReply(c,shared.nullbulk);
     }
     else
     {   
         header = sdsempty();
-        header = sdscatprintf(header, "*%lu\r\n", i*2);
+        header = sdscatprintf(header, "*%zu\r\n", (i*2));
         header = sdscatlen(header, str, sdslen(str));
         addReplySds(c, header);
         sdsfree(header);
     }
     
     sdsfree(str);
-    zfree(keyword);
-
+    
     return ;
 }
 
@@ -576,39 +671,22 @@ void ds_hdel(redisClient *c)
     
     sds keyword;
     char *err = NULL;
-    leveldb_writeoptions_t *woptions;
-	leveldb_writebatch_t   *wb;
-
+    
+	leveldb_writebatch_t  *wb;
     leveldb_iterator_t    *iter;
-    leveldb_readoptions_t *roptions;
-    
-	roptions = leveldb_readoptions_create();
-	leveldb_readoptions_set_verify_checksums(roptions, 0);
-	leveldb_readoptions_set_fill_cache(roptions, 1);
-    
-    iter    = leveldb_create_iterator(server.ds_db, roptions);
     
     keyword  = sdsempty();
-    woptions = leveldb_writeoptions_create();
     
+    //delete hashtable key
 	if(c->argc < 3)
 	{
         keyword = sdscpy(keyword, c->argv[1]->ptr);
         keyword = sdscatlen(keyword, "*", 1);
 		
-        leveldb_iter_seek(iter, keyword, sdslen(keyword));
-        if(!leveldb_iter_valid(iter))
-        {
-            sdsfree(keyword);
-            addReply(c,shared.nullbulk);
-            leveldb_iter_destroy(iter);
-            leveldb_readoptions_destroy(roptions);
-            leveldb_writeoptions_destroy(woptions);
-            return ;
-        }
         
-        wb = leveldb_writebatch_create();
-        while(1)
+        iter = leveldb_create_iterator(server.ds_db, server.roptions);
+        wb   = leveldb_writebatch_create();
+        for(leveldb_iter_seek(iter, keyword, sdslen(keyword)); leveldb_iter_valid(iter); leveldb_iter_next(iter))
         {
             key_len = 0;
             key     = leveldb_iter_key(iter, &key_len);
@@ -616,36 +694,32 @@ void ds_hdel(redisClient *c)
             if(strncmp(keyword, key, sdslen(keyword)) != 0)
                 break;
             
-            //printf("key = %s\r\n", key);
             leveldb_writebatch_delete(wb, key, key_len);
-            leveldb_iter_next(iter);
-            if(!leveldb_iter_valid(iter))
-                break;
         }
-    	
-        leveldb_write(server.ds_db, woptions, wb, &err);
-    	leveldb_writeoptions_destroy(woptions);
-    	leveldb_writebatch_destroy(wb);
         
-    	if(err != NULL)
+        leveldb_write(server.ds_db, server.woptions, wb, &err);
+        leveldb_writebatch_clear(wb);
+    	leveldb_writebatch_destroy(wb);
+        sdsfree(keyword);
+
+        if(err != NULL)
     	{
     		addReplyError(c, err);
-    		leveldb_free(err);
-            
-            sdsfree(keyword);
-            leveldb_iter_destroy(iter);
-            leveldb_readoptions_destroy(roptions);
-            leveldb_writeoptions_destroy(woptions);
+    		leveldb_free(err);    
     		return ;
     	}
-		addReply(c,shared.ok);
         
-        sdsfree(keyword);
+        err = NULL;
+        leveldb_iter_get_error(iter, &err);
         leveldb_iter_destroy(iter);
-        leveldb_readoptions_destroy(roptions);
-        leveldb_writeoptions_destroy(woptions);
+    
+        if(err)
+        {
+    		addReplyError(c, err);
+    		leveldb_free(err);
+        }
         
-		return ;
+        addReply(c,shared.ok);
 	}
 	
 	wb = leveldb_writebatch_create();
@@ -659,9 +733,8 @@ void ds_hdel(redisClient *c)
 	}
     
     sdsfree(keyword);
-	leveldb_write(server.ds_db, woptions, wb, &err);
-	leveldb_readoptions_destroy(roptions);
-    leveldb_writeoptions_destroy(woptions);
+	leveldb_write(server.ds_db, server.woptions, wb, &err);
+    leveldb_writebatch_clear(wb);
 	leveldb_writebatch_destroy(wb);
     
 
@@ -682,21 +755,14 @@ void ds_hget(redisClient *c)
     size_t val_len = 0;
     char *key = NULL, *field = NULL, *value = NULL, *err = NULL;
     
-	leveldb_readoptions_t *roptions;
     
     key   = (char *)c->argv[1]->ptr;
     field = (char *)c->argv[2]->ptr;
     
-	roptions = leveldb_readoptions_create();
-	leveldb_readoptions_set_verify_checksums(roptions, 0);
-	leveldb_readoptions_set_fill_cache(roptions, 1);
-    
     str      = sdsnew(key);
     str      = sdscatlen(str, "*", 1);
     str      = sdscat(str, field);
-    value = leveldb_get(server.ds_db, roptions, str, sdslen(str), &val_len, &err);
-    leveldb_readoptions_destroy(roptions);
-    
+    value = leveldb_get(server.ds_db, server.roptions, str, sdslen(str), &val_len, &err);    
     if(err != NULL)
     {
 		addReplyError(c, err);
@@ -739,20 +805,11 @@ void ds_incrby(redisClient *c)
     
     size_t val_len;
     char *err = NULL;
-    leveldb_writeoptions_t *woptions;
-	leveldb_readoptions_t *roptions;
-    
-    
-	roptions = leveldb_readoptions_create();
-	leveldb_readoptions_set_verify_checksums(roptions, 0);
-	leveldb_readoptions_set_fill_cache(roptions, 1);
     
     err     = NULL;
     val_len = 0;
     
-    value = leveldb_get(server.ds_db, roptions, c->argv[1]->ptr, sdslen((sds)c->argv[1]->ptr), &val_len, &err);
-    leveldb_readoptions_destroy(roptions);
-
+    value = leveldb_get(server.ds_db, server.roptions, c->argv[1]->ptr, sdslen((sds)c->argv[1]->ptr), &val_len, &err);
     if(err != NULL)
 	{
 		leveldb_free(err);
@@ -773,10 +830,8 @@ void ds_incrby(redisClient *c)
     recore   = strtoll(c->argv[2]->ptr, NULL, 10);
     recore   = val + recore;
     data     = sdsfromlonglong(recore);
-    woptions = leveldb_writeoptions_create();
     
-    leveldb_put(server.ds_db, woptions, c->argv[1]->ptr, sdslen((sds)c->argv[1]->ptr), data, sdslen(data), &err);
-    leveldb_writeoptions_destroy(woptions);
+    leveldb_put(server.ds_db, server.woptions, c->argv[1]->ptr, sdslen((sds)c->argv[1]->ptr), data, sdslen(data), &err);
     if(err != NULL)
     {
 		addReplyError(c, err);
@@ -800,20 +855,11 @@ void ds_append(redisClient *c)
     
     size_t val_len;
     char *err = NULL;
-    leveldb_writeoptions_t *woptions;
-	leveldb_readoptions_t *roptions;
-    
-    
-	roptions = leveldb_readoptions_create();
-	leveldb_readoptions_set_verify_checksums(roptions, 0);
-	leveldb_readoptions_set_fill_cache(roptions, 1);
     
     err     = NULL;
     val_len = 0;
     
-    value = leveldb_get(server.ds_db, roptions, c->argv[1]->ptr, sdslen((sds)c->argv[1]->ptr), &val_len, &err);
-    leveldb_readoptions_destroy(roptions);
-
+    value = leveldb_get(server.ds_db, server.roptions, c->argv[1]->ptr, sdslen((sds)c->argv[1]->ptr), &val_len, &err);
     if(err != NULL)
 	{
 		leveldb_free(err);
@@ -827,13 +873,11 @@ void ds_append(redisClient *c)
     recore   = sdsempty();
     if(val_len > 0)
     {
-        recore = sdscpy(recore, value);
+        recore = sdscpylen(recore, value, val_len);
     }    
-    recore = sdscat(recore, c->argv[1]->ptr);
-    woptions = leveldb_writeoptions_create();
+    recore = sdscat(recore, c->argv[2]->ptr);
     
-    leveldb_put(server.ds_db, woptions, c->argv[1]->ptr, sdslen((sds)c->argv[1]->ptr), recore, sdslen(recore), &err);
-    leveldb_writeoptions_destroy(woptions);
+    leveldb_put(server.ds_db, server.woptions, c->argv[1]->ptr, sdslen((sds)c->argv[1]->ptr), recore, sdslen(recore), &err);
     if(err != NULL)
     {
 		addReplyError(c, err);
@@ -841,7 +885,7 @@ void ds_append(redisClient *c)
     }
     else
     {
-        addReply(c,shared.ok);
+        addReplyLongLong(c, sdslen(recore));
     }
     
     sdsfree(recore);
@@ -853,14 +897,10 @@ void ds_set(redisClient *c)
 {
 	char *key, *value;
     char *err = NULL;
-    leveldb_writeoptions_t *woptions;
-
-    woptions = leveldb_writeoptions_create();
     
     key   = (char *)c->argv[1]->ptr;
     value = (char *)c->argv[2]->ptr;
-    leveldb_put(server.ds_db, woptions, key, sdslen((sds)key), value, sdslen((sds)value), &err);
-    leveldb_writeoptions_destroy(woptions);
+    leveldb_put(server.ds_db, server.woptions, key, sdslen((sds)key), value, sdslen((sds)value), &err);
     if(err != NULL)
     {
 		addReplyError(c, err);
@@ -875,14 +915,10 @@ void rl_set(redisClient *c)
 {
 	char *key, *value;
     char *err = NULL;
-    leveldb_writeoptions_t *woptions;
-
-    woptions = leveldb_writeoptions_create();
 
     key   = (char *)c->argv[1]->ptr;
     value = (char *)c->argv[2]->ptr;
-    leveldb_put(server.ds_db, woptions, key, sdslen((sds)key), value, sdslen((sds)value), &err);
-    leveldb_writeoptions_destroy(woptions);
+    leveldb_put(server.ds_db, server.woptions, key, sdslen((sds)key), value, sdslen((sds)value), &err);
     if(err != NULL)
     {
         addReplyError(c, err);
@@ -900,16 +936,12 @@ void ds_delete(redisClient *c)
 	int  i;
 	char *key;
     char *err = NULL;
-    leveldb_writeoptions_t *woptions;
 	leveldb_writebatch_t   *wb;
-
-    woptions = leveldb_writeoptions_create();
     
 	if(c->argc < 3)
 	{
 		key   = (char *)c->argv[1]->ptr;
-		leveldb_delete(server.ds_db, woptions, key, sdslen((sds)key), &err);
-		leveldb_writeoptions_destroy(woptions);
+		leveldb_delete(server.ds_db, server.woptions, key, sdslen((sds)key), &err);
 		if(err != NULL)
 		{
 			addReplyError(c, err);
@@ -925,9 +957,10 @@ void ds_delete(redisClient *c)
 	{
 		leveldb_writebatch_delete(wb, (char *)c->argv[i]->ptr, sdslen((sds)c->argv[i]->ptr));
 	}
-	leveldb_write(server.ds_db, woptions, wb, &err);
-	leveldb_writeoptions_destroy(woptions);
+	leveldb_write(server.ds_db, server.woptions, wb, &err);
+    leveldb_writebatch_clear(wb);
 	leveldb_writebatch_destroy(wb);
+    wb = NULL;
 
 	if(err != NULL)
 	{
@@ -950,6 +983,8 @@ void rl_delete(redisClient *c)
 
 void ds_close()
 {
+    leveldb_readoptions_destroy(server.roptions);
+    leveldb_writeoptions_destroy(server.woptions);
     leveldb_options_set_filter_policy(server.ds_options, NULL);
     leveldb_filterpolicy_destroy(server.policy);
 	leveldb_close(server.ds_db);
