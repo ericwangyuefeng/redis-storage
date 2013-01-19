@@ -169,25 +169,25 @@ EOF
 
     # Test whether Snappy library is installed
     # http://code.google.com/p/snappy/
-    $CXX $CXXFLAGS -I../snappy-1.0.5/ -x c++ - -o /dev/null 2>/dev/null  <<EOF
+    $CXX $CXXFLAGS -x c++ - -o /dev/null 2>/dev/null  <<EOF
       #include <snappy.h>
       int main() {}
 EOF
     if [ "$?" = 0 ]; then
-        COMMON_FLAGS="$COMMON_FLAGS -I../snappy-1.0.5/ -DSNAPPY"
-        PLATFORM_LIBS="$PLATFORM_LIBS -L../snappy-1.0.5/.libs -lsnappy"
+        COMMON_FLAGS="$COMMON_FLAGS -DSNAPPY"
+        PLATFORM_LIBS="$PLATFORM_LIBS -lsnappy"
     fi
 
     # Test whether tcmalloc is available
-    $CXX $CXXFLAGS  -I../gperftools-2.0/src -L../gperftools-2.0/.libs -x c++ - -o /dev/null -ltcmalloc_minimal 2>/dev/null  <<EOF
+    $CXX $CXXFLAGS -x c++ - -o /dev/null -ltcmalloc 2>/dev/null  <<EOF
       int main() {}
 EOF
     if [ "$?" = 0 ]; then
-        PLATFORM_LIBS="$PLATFORM_LIBS -L../gperftools-2.0/.libs/libtcmalloc_minimal.a"
+        PLATFORM_LIBS="$PLATFORM_LIBS -ltcmalloc"
     fi
 fi
 
-PLATFORM_CCFLAGS="$PLATFORM_CCFLAGS -I../snappy-1.0.5/ -I ../gperftools-2.0/src -L../gperftools-2.0/.libs $COMMON_FLAGS"
+PLATFORM_CCFLAGS="$PLATFORM_CCFLAGS $COMMON_FLAGS"
 PLATFORM_CXXFLAGS="$PLATFORM_CXXFLAGS $COMMON_FLAGS"
 
 echo "CC=$CC" >> $OUTPUT
