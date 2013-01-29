@@ -1,51 +1,5 @@
 #include "redis.h"
 
-/*
-static char *urlencode(char const *s, int len, int *new_length)
-{
-	#define safe_emalloc(nmemb, size, offset)	zmalloc((nmemb) * (size) + (offset))
-	static unsigned char hexchars[] = "0123456789ABCDEF";
-	register unsigned char c;
-	unsigned char *to, *start;
-	unsigned char const *from, *end;
-	
-	from = (unsigned char *)s;
-	end = (unsigned char *)s + len;
-	start = to = (unsigned char *) safe_emalloc(3, len, 1);
-
-	while (from < end) {
-		c = *from++;
-
-		if (c == ' ') {
-			*to++ = '+';
-#ifndef CHARSET_EBCDIC
-		} else if ((c < '0' && c != '-' && c != '.') ||
-				   (c < 'A' && c > '9') ||
-				   (c > 'Z' && c < 'a' && c != '_') ||
-				   (c > 'z')) {
-			to[0] = '%';
-			to[1] = hexchars[c >> 4];
-			to[2] = hexchars[c & 15];
-			to += 3;
-#else //CHARSET_EBCDIC
-		} else if (!isalnum(c) && strchr("_-.", c) == NULL) {
-			// Allow only alphanumeric chars and '_', '-', '.'; escape the rest 
-			to[0] = '%';
-			to[1] = hexchars[os_toascii[c] >> 4];
-			to[2] = hexchars[os_toascii[c] & 15];
-			to += 3;
-#endif //CHARSET_EBCDIC
-		} else {
-			*to++ = c;
-		}
-	}
-	*to = 0;
-	if (new_length) {
-		*new_length = to - start;
-	}
-	return (char *) start;
-}
-*/
 
 void ds_init()
 {
@@ -91,15 +45,23 @@ void ds_exists(redisClient *c)
     int                   i;
     char                  *err;
     leveldb_iterator_t    *iter;
+	char *kp;size_t kl;
     
     iter     = leveldb_create_iterator(server.ds_db, server.roptions);
     addReplyMultiBulkLen(c, c->argc-1);
 	for(i=1; i<c->argc; i++)
 	{
         leveldb_iter_seek(iter, c->argv[i]->ptr, sdslen((sds)c->argv[i]->ptr));
-        if(leveldb_iter_valid(iter))
-            addReplyLongLong(c, 1);
-        else
+        if(leveldb_iter_valid(iter)){
+		  
+		  kp = leveldb_iter_key(iter,&kl);
+
+		  if( sdslen((sds)c->argv[i]->ptr) == kl && 0 == memcmp(c->argv[i]->ptr,kp,kl))
+			addReplyLongLong(c,1);
+		  else
+			addReplyLongLong(c,0);
+		  
+        }else
             addReplyLongLong(c, 0);
 	}
     
@@ -124,6 +86,7 @@ void ds_hexists(redisClient *c)
     sds                   key;
     char                  *err;
     leveldb_iterator_t    *iter;
+	char *kp;size_t kl;
     
     key      = sdsempty();
     iter     = leveldb_create_iterator(server.ds_db, server.roptions);
@@ -136,9 +99,15 @@ void ds_hexists(redisClient *c)
         key      = sdscat(key, c->argv[i]->ptr);
         
         leveldb_iter_seek(iter, key, sdslen(key));
-        if(leveldb_iter_valid(iter))
-            addReplyLongLong(c, 1);
-        else
+        if(leveldb_iter_valid(iter)){
+			kp = leveldb_iter_key(iter,&kl);
+
+			if( sdslen(key) == kl && 0 == memcmp(key,kp,kl))
+			  addReplyLongLong(c,1);
+			else
+			  addReplyLongLong(c,0);
+			
+        }else
             addReplyLongLong(c, 0);
 	}
     
@@ -612,20 +581,25 @@ void ds_hgetall(redisClient *c)
     len     = sdslen(str);
     keyword = zmalloc(len+1);
     memcpy(keyword, str, len);
-    
+
+	keyword[len] = '\0';
+	
     sdsclear(str);
     iter = leveldb_create_iterator(server.ds_db, server.roptions);
-    for(leveldb_iter_seek(iter, keyword, len); leveldb_iter_valid(iter); leveldb_iter_next(iter))
+    for(leveldb_iter_seek(iter, keyword, len);leveldb_iter_valid(iter); leveldb_iter_next(iter))
     {
         
         key_len = value_len = 0;
         key   = leveldb_iter_key(iter, &key_len);
-        value = leveldb_iter_value(iter, &value_len);
-        
-        if(key_len == len)
-            continue;
-        else if(strncmp(keyword, key, len) != 0)
+		
+		
+        if(strncmp(keyword, key, len) != 0)
             break;
+
+		
+		if(key_len == len)
+            continue;
+        value = leveldb_iter_value(iter, &value_len);
         
         str = sdscatprintf(str, "$%zu\r\n", (key_len-len));
         str = sdscatlen(str, key+len, key_len-len);
@@ -655,7 +629,6 @@ void ds_hgetall(redisClient *c)
         header = sdscatprintf(header, "*%zu\r\n", (i*2));
         header = sdscatlen(header, str, sdslen(str));
         addReplySds(c, header);
-        sdsfree(header);
     }
     
     sdsfree(str);
@@ -744,7 +717,9 @@ void ds_hdel(redisClient *c)
 		leveldb_free(err);
 		return ;
 	}
-	addReply(c,shared.ok);
+
+	
+	addReplyLongLong(c,c->argc-2);
 
     return ;
 }
@@ -948,7 +923,7 @@ void ds_delete(redisClient *c)
 			leveldb_free(err);
 			return ;
 		}
-		addReply(c,shared.ok);
+		addReply(c,shared.cone);
 		return ;
 	}
 	
@@ -968,7 +943,8 @@ void ds_delete(redisClient *c)
 		leveldb_free(err);
 		return ;
 	}
-	addReply(c,shared.ok);
+	
+	addReplyLongLong(c,c->argc-1);
 
     return ;
 }
