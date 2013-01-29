@@ -544,7 +544,10 @@ void rl_hdel(redisClient *c)
     int j, deleted = 0;
 
     if ((o = lookupKeyWriteOrReply(c,c->argv[1],shared.czero)) == NULL ||
-        checkType(c,o,REDIS_HASH)) return;
+        checkType(c,o,REDIS_HASH)) {
+        ds_hdel(c);
+        return;
+    } 
 
     for (j = 2; j < c->argc; j++) {
         if (hashTypeDelete(o,c->argv[j])) {
