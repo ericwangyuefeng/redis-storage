@@ -650,6 +650,7 @@ void ds_hdel(redisClient *c)
     
 	leveldb_writebatch_t  *wb;
     leveldb_iterator_t    *iter;
+    int dflag = 0;
     
     keyword  = sdsempty();
     
@@ -662,6 +663,7 @@ void ds_hdel(redisClient *c)
         
         iter = leveldb_create_iterator(server.ds_db, server.roptions);
         wb   = leveldb_writebatch_create();
+
         for(leveldb_iter_seek(iter, keyword, sdslen(keyword)); leveldb_iter_valid(iter); leveldb_iter_next(iter))
         {
             key_len = 0;
@@ -671,6 +673,9 @@ void ds_hdel(redisClient *c)
                 break;
             
             leveldb_writebatch_delete(wb, key, key_len);
+            if(!dflag) {
+                dflag = 1;
+            }
         }
         
         leveldb_write(server.ds_db, server.woptions, wb, &err);
@@ -695,7 +700,8 @@ void ds_hdel(redisClient *c)
     		leveldb_free(err);
         }
         
-        addReply(c,shared.ok);
+        addReplyLongLong(c, dflag ? redis.cone : redis.czero);
+        return;
 	}
 	
 	wb = leveldb_writebatch_create();
@@ -971,6 +977,7 @@ void rl_delete(redisClient *c)
             leveldb_free(err);
             return ;
         }
+        delCommand(c);
         return ;
     }
     
@@ -992,6 +999,7 @@ void rl_delete(redisClient *c)
     }
 
     delCommand(c);
+    
 }
 
 void ds_close()
