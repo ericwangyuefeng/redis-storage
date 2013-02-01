@@ -1815,7 +1815,7 @@ void ds_hdel(redisClient *c)
     		leveldb_free(err);
         }
         
-        addReplyLongLong(c, dflag ? shared.cone : shared.czero);
+        addReply(c, dflag ? shared.cone : shared.czero);
         return;
 	}
 	
