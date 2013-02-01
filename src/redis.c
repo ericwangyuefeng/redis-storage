@@ -122,6 +122,7 @@ struct redisCommand redisCommandTable[] = {
     {"ds_set",ds_set,3,"wm",0,noPreloadGetKeys,1,1,1,0,0},
     {"rl_set",rl_set,3,"wm",0,noPreloadGetKeys,1,1,1,0,0},
     {"ds_hset",ds_hset,4,"wm",0,NULL,1,1,1,0,0},
+	{"ds_hsetnx",ds_hsetnx,4,"wm",0,NULL,1,1,1,0,0},
     {"rl_hset",rl_hset,4,"wm",0,NULL,1,1,1,0,0},
     {"ds_hdel",ds_hdel,-2,"w",0,noPreloadGetKeys,1,-1,1,0,0},
     {"rl_hdel",rl_hdel,-2,"w",0,noPreloadGetKeys,1,-1,1,0,0},
@@ -131,15 +132,20 @@ struct redisCommand redisCommandTable[] = {
     {"ds_hmset",ds_hmset,-4,"wm",0,NULL,1,1,1,0,0},
     {"ds_hincrby",ds_hincrby,4,"wm",0,NULL,1,1,1,0,0},
     {"ds_hgetall",ds_hgetall,2,"r",0,NULL,1,1,1,0,0},
+    {"ds_hkeys",ds_hkeys,2,"r",0,NULL,1,1,1,0,0},
+    {"ds_hlen",ds_hlen,2,"r",0,NULL,1,1,1,0,0},
+    {"ds_hvals",ds_hvals,2,"r",0,NULL,1,1,1,0,0},
     {"ds_append",ds_append,3,"wm",0,NULL,1,1,1,0,0},
     {"ds_incrby",ds_incrby,3,"wm",0,NULL,1,1,1,0,0},
     {"ds_exists",ds_exists,-2,"r",0,NULL,1,-1,1,0,0},
     {"ds_hexists",ds_hexists,-2,"r",0,NULL,1,-1,1,0,0},    
     
-    /*    
-    {"ds_keys_asc",ds_keys_asc,2,"r",0,NULL,1,1,1,0,0},
-    {"ds_keys_desc",ds_keys_desc,2,"r",0,NULL,1,1,1,0,0},
-    */
+    {"ds_keys_asc",ds_keys_asc,-1,"r",0,NULL,1,1,1,0,0},
+    {"ds_hkeys_asc",ds_hkeys_asc,-1,"r",0,NULL,1,1,1,0,0},
+    {"ds_keys_desc",ds_keys_desc,-1,"r",0,NULL,1,1,1,0,0},
+    {"ds_hkeys_desc",ds_hkeys_desc,-1,"r",0,NULL,1,1,1,0,0},
+    {"ds_keys_count",ds_keys_count,3,"r",0,NULL,1,1,1,0,0},
+    {"ds_hkeys_count",ds_hkeys_count,3,"r",0,NULL,1,1,1,0,0},
                         
     {"get",getCommand,2,"r",0,NULL,1,1,1,0,0},
     {"set",setCommand,3,"wm",0,noPreloadGetKeys,1,1,1,0,0},
