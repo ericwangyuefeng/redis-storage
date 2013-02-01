@@ -2053,7 +2053,7 @@ void ds_delete(redisClient *c)
 			leveldb_free(err);
 			return ;
 		}
-		addReplyLongLong(c,shared.cone);
+		addReply(c,shared.cone);
 		return ;
 	}
 	
