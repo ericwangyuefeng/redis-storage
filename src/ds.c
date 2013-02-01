@@ -1815,7 +1815,7 @@ void ds_hdel(redisClient *c)
     		leveldb_free(err);
         }
         
-        addReplyLongLong(c, dflag ? redis.cone : redis.czero);
+        addReplyLongLong(c, dflag);
         return;
 	}
 	
