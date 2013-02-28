@@ -1136,7 +1136,7 @@ void rl_get(redisClient *c)
 	//从redis里取数据
 	robj *o;
 
-    if ((o = lookupKeyRead(c,c->argv[1])) == NULL) {
+    if ((o = lookupKeyRead(c->db,c->argv[1])) == NULL) {
 	    ds_get(c);
         return;
     }
@@ -1583,7 +1583,7 @@ void rl_hdel(redisClient *c)
     robj *o;
     int j, deleted = 0;
 
-    if ((o = lookupKeyWrite(c,c->argv[1])) == NULL ||
+    if ((o = lookupKeyWrite(c->db,c->argv[1])) == NULL ||
             checkType(c,o,REDIS_HASH)) {
         ds_hdel(c);
         return;
@@ -2038,7 +2038,7 @@ void rl_hget(redisClient *c)
 {
     robj *o;
 
-    if ((o = lookupKeyRead(c,c->argv[1])) != NULL )
+    if ((o = lookupKeyRead(c->db,c->argv[1])) != NULL )
     {
         addHashFieldToReply(c, o, c->argv[2]);
         return;
