@@ -2034,14 +2034,13 @@ void rl_hget(redisClient *c)
 {
     robj *o;
 
-    if ((o = lookupKeyReadOrReply(c,c->argv[1],shared.nullbulk)) == NULL ||
-        checkType(c,o,REDIS_HASH)) 
+    if ((o = lookupKeyReadOrReply(c,c->argv[1],shared.nullbulk)) != NULL )
     {
-        ds_hget(c);
+        addHashFieldToReply(c, o, c->argv[2]);
         return;
     }
+    ds_hget(c);
 
-    addHashFieldToReply(c, o, c->argv[2]);
 }
 
 
