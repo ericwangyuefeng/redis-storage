@@ -1136,15 +1136,18 @@ void rl_get(redisClient *c)
 	//从redis里取数据
 	robj *o;
 
-    if ((o = lookupKeyReadOrReply(c,c->argv[1],shared.nullbulk)) != NULL) {
+    if ((o = lookupKeyRead(c,c->argv[1])) == NULL) {
+	    ds_get(c);
+        return;
+    }
 
-	    if (o->type == REDIS_STRING) {
-	        addReplyBulk(c,o);
-	        return;
-	    }
+	if (o->type == REDIS_STRING) {
+	    addReplyBulk(c,o);
+	    return;
 	}
 
-	ds_get(c);
+    addReply(c, shared.nullbulk);
+
 }
 
 
@@ -1580,12 +1583,12 @@ void rl_hdel(redisClient *c)
     robj *o;
     int j, deleted = 0;
 
-    if ((o = lookupKeyWriteOrReply(c,c->argv[1],shared.czero)) == NULL ||
-        checkType(c,o,REDIS_HASH)) {
+    if ((o = lookupKeyWrite(c,c->argv[1])) == NULL ||
+            checkType(c,o,REDIS_HASH)) {
         ds_hdel(c);
         return;
     } 
-
+    
     for (j = 2; j < c->argc; j++) {
         if (hashTypeDelete(o,c->argv[j])) {
             deleted++;
@@ -1599,8 +1602,9 @@ void rl_hdel(redisClient *c)
         signalModifiedKey(c->db,c->argv[1]);
         server.dirty += deleted;
     }
+    addReplyLongLong(c,deleted);
 
-    ds_hdel(c);
+    
 }
 
 void ds_hgetall(redisClient *c)
@@ -2034,7 +2038,7 @@ void rl_hget(redisClient *c)
 {
     robj *o;
 
-    if ((o = lookupKeyReadOrReply(c,c->argv[1],shared.nullbulk)) != NULL )
+    if ((o = lookupKeyRead(c,c->argv[1])) != NULL )
     {
         addHashFieldToReply(c, o, c->argv[2]);
         return;
