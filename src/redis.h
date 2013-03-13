@@ -1235,7 +1235,7 @@ void ds_init();
 void ds_close();
 void ds_get(redisClient *c);
 void ds_set(redisClient *c);
-void ds_mset(redisClient *c);
+int ds_mset(redisClient *c);
 void ds_mget(redisClient *c);
 
 void ds_append(redisClient *c);
@@ -1274,6 +1274,7 @@ void rl_set(redisClient *c);
 void rl_hget(redisClient *c);
 void rl_hset(redisClient *c);
 void rl_hdel(redisClient *c);
+void rl_mset(redisClient *c);
 
 
 #define redisDebug(fmt, ...) \

@@ -1087,7 +1087,7 @@ void rl_get(redisClient *c) {
 
 }
 
-void ds_mset(redisClient *c) {
+int ds_mset(redisClient *c, int reply=1) {
     int i;
     char *key, *value;
     char *err = NULL;
@@ -1096,7 +1096,7 @@ void ds_mset(redisClient *c) {
 
     if ((c->argc % 2) == 0) {
         addReply(c, shared.nullbulk);
-        return;
+        return 0;
     }
 
 
@@ -1112,11 +1112,20 @@ void ds_mset(redisClient *c) {
     if (err != NULL) {
         addReplyError(c, err);
         leveldb_free(err);
-        return;
+        return 0;
     }
-    addReply(c, shared.ok);
 
-    return;
+    if(reply) {
+        addReply(c, shared.ok);
+    }
+
+    return 1;
+}
+
+void rl_mset(redisClient *c) {
+    if(ds_mset(c, 0)) {
+        msetCommand(c);
+    }
 }
 
 void ds_hincrby(redisClient *c) {
