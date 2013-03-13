@@ -1235,7 +1235,7 @@ void ds_init();
 void ds_close();
 void ds_get(redisClient *c);
 void ds_set(redisClient *c);
-int ds_mset(redisClient *c);
+void ds_mset(redisClient *c);
 void ds_mget(redisClient *c);
 
 void ds_append(redisClient *c);

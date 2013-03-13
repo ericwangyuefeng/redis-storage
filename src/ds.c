@@ -1091,7 +1091,7 @@ void ds_mset(redisClient *c) {
     ds_msetCommand(c, 1);
 }
 
-int ds_msetCommand(redisClient *c, int reply) {
+static int ds_msetCommand(redisClient *c, int reply) {
     int i;
     char *key, *value;
     char *err = NULL;
