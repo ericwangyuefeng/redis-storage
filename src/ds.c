@@ -1087,7 +1087,11 @@ void rl_get(redisClient *c) {
 
 }
 
-int ds_mset(redisClient *c, int reply=1) {
+void ds_mset(redisClient *c) {
+    ds_msetCommand(c, 1);
+}
+
+int ds_msetCommand(redisClient *c, int reply) {
     int i;
     char *key, *value;
     char *err = NULL;
@@ -1123,7 +1127,7 @@ int ds_mset(redisClient *c, int reply=1) {
 }
 
 void rl_mset(redisClient *c) {
-    if(ds_mset(c, 0)) {
+    if(ds_msetCommand(c, 0)) {
         msetCommand(c);
     }
 }
