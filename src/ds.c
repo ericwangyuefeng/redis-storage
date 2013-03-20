@@ -1044,6 +1044,10 @@ void ds_mget(redisClient *c) {
 }
 
 void ds_get(redisClient *c) {
+    ds_getCommand(c, 0);
+}
+
+static void ds_getCommand(redisClient *c, int set) {
     char *err;
     size_t val_len;
     char *key = NULL;
@@ -1067,6 +1071,12 @@ void ds_get(redisClient *c) {
     addReplyBulkCBuffer(c, value, val_len);
 
     leveldb_free(value);
+
+    if(set) {
+        setKey(c->db, c->argv[1], createObject(REDIS_STRING, value));
+    }
+
+    
 }
 
 void rl_get(redisClient *c) {
@@ -1075,6 +1085,24 @@ void rl_get(redisClient *c) {
 
     if ((o = lookupKeyRead(c->db, c->argv[1])) == NULL) {
         ds_get(c);
+        return;
+    }
+
+    if (o->type == REDIS_STRING) {
+        addReplyBulk(c, o);
+        return;
+    }
+
+    addReply(c, shared.nullbulk);
+
+}
+
+void rl_getset(redisClient *c) {
+    //从redis里取数据
+    robj *o;
+
+    if ((o = lookupKeyRead(c->db, c->argv[1])) == NULL) {
+        ds_getCommand(c, 1);
         return;
     }
 
@@ -1866,6 +1894,10 @@ void ds_hdel(redisClient *c) {
 }
 
 void ds_hget(redisClient *c) {
+    ds_hsetCommand(c, 0);
+}
+
+static void ds_hgetCommand(redisClient *c, int set) {
     sds str;
     size_t val_len = 0;
     char *key = NULL, *field = NULL, *value = NULL, *err = NULL;
@@ -1895,8 +1927,17 @@ void ds_hget(redisClient *c) {
     }
     sdsfree(str);
 
+    if(set) {
+        obj *o;
+
+        if ((o = hashTypeLookupWriteOrCreate(c,c->argv[1])) == NULL) return;
+
+        hashTypeSet(o,c->argv[2], createObject(REDIS_STRING, value))
+    }
+
     addReplyBulkCBuffer(c, value, val_len);
     leveldb_free(value);
+
 }
 
 void rl_hget(redisClient *c) {
@@ -1906,7 +1947,7 @@ void rl_hget(redisClient *c) {
         addHashFieldToReply(c, o, c->argv[2]);
         return;
     }
-    ds_hget(c);
+    ds_hsetCommand(c, 1);
 
 }
 

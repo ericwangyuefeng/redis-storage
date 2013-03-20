@@ -1,6 +1,10 @@
 更新说明
 =========
 <pre>
+新增命令：
+rl_getset （当leveldb有值，redis无值时，此命令会返回值，并把值写回到redis）
+rl_hgetset （当leveldb有值，redis无值时，此命令会返回值，并把值写回到redis）
+
 增加hash相关几个命令
 ds_hlen
 ds_hvals
