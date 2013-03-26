@@ -1,11 +1,18 @@
 更新说明
 =========
 <pre>
-新增命令：
+rl系列命令：
+rl_get
+rl_set
+rl_mset
 rl_getset （当leveldb有值，redis无值时，此命令会返回值，并把值写回到redis）
-rl_hgetset （当leveldb有值，redis无值时，此命令会返回值，并把值写回到redis）
+rl_del
+rl_hget
+rl_hset
+rl_hgetset
+rl_hdel
 
-增加hash相关几个命令
+ds系列命令:
 ds_hlen
 ds_hvals
 ds_hsetnx
