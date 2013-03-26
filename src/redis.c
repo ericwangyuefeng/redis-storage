@@ -115,7 +115,7 @@ struct redisCommand *commandTable;
 struct redisCommand redisCommandTable[] = {
     {"ds_get",ds_get,2,"r",0,NULL,1,1,1,0,0},
     {"rl_get",rl_get,2,"r",0,NULL,1,1,1,0,0},
-    {"rl_getset",rl_get,2,"r",0,NULL,1,1,1,0,0},
+    {"rl_getset",rl_getset,2,"r",0,NULL,1,1,1,0,0},
     {"ds_mget",ds_mget,-2,"r",0,NULL,1,-1,1,0,0},
     {"ds_mset",ds_mset,-3,"wm",0,NULL,1,-1,2,0,0},
     {"rl_mset",rl_mset,-3,"wm",0,NULL,1,-1,2,0,0},
