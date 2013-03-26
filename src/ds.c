@@ -1043,10 +1043,6 @@ void ds_mget(redisClient *c) {
     addReplySds(c, ret);
 }
 
-void ds_get(redisClient *c) {
-    ds_getCommand(c, 0);
-}
-
 static void ds_getCommand(redisClient *c, int set) {
     char *err;
     size_t val_len;
@@ -1068,23 +1064,31 @@ static void ds_getCommand(redisClient *c, int set) {
         return;
     }
 
+    if(set) {
+        robj *rv;
+        rv = createStringObject(value, val_len);
+        setKey(c->db, c->argv[1], rv);
+    }
+
     addReplyBulkCBuffer(c, value, val_len);
 
     leveldb_free(value);
 
-    if(set) {
-        setKey(c->db, c->argv[1], createObject(REDIS_STRING, value));
-    }
-
+    return;
     
 }
 
-void rl_get(redisClient *c) {
+void ds_get(redisClient *c) {
+    ds_getCommand(c, 0);
+    return;
+}
+
+static void rl_getCommand(redisClient *c, int set) {
     //从redis里取数据
     robj *o;
 
     if ((o = lookupKeyRead(c->db, c->argv[1])) == NULL) {
-        ds_get(c);
+        ds_getCommand(c, set);
         return;
     }
 
@@ -1097,22 +1101,13 @@ void rl_get(redisClient *c) {
 
 }
 
+void rl_get(redisClient *c) {
+    rl_getCommand(c, 0);
+    return;
+}
+
 void rl_getset(redisClient *c) {
-    //从redis里取数据
-    robj *o;
-
-    if ((o = lookupKeyRead(c->db, c->argv[1])) == NULL) {
-        ds_getCommand(c, 1);
-        return;
-    }
-
-    if (o->type == REDIS_STRING) {
-        addReplyBulk(c, o);
-        return;
-    }
-
-    addReply(c, shared.nullbulk);
-
+    rl_getCommand(c, 1);
 }
 
 
@@ -1538,8 +1533,8 @@ void rl_hdel(redisClient *c) {
         signalModifiedKey(c->db, c->argv[1]);
         server.dirty += deleted;
     }
-    addReplyLongLong(c, deleted);
 
+    ds_hdel(c);
 
 }
 
@@ -1893,10 +1888,6 @@ void ds_hdel(redisClient *c) {
     return;
 }
 
-void ds_hget(redisClient *c) {
-    ds_hsetCommand(c, 0);
-}
-
 static void ds_hgetCommand(redisClient *c, int set) {
     sds str;
     size_t val_len = 0;
@@ -1928,11 +1919,14 @@ static void ds_hgetCommand(redisClient *c, int set) {
     sdsfree(str);
 
     if(set) {
-        obj *o;
+        robj *o;
+        robj *rv;
 
         if ((o = hashTypeLookupWriteOrCreate(c,c->argv[1])) == NULL) return;
+        
+        rv = createStringObject(value, val_len);
 
-        hashTypeSet(o,c->argv[2], createObject(REDIS_STRING, value))
+        hashTypeSet(o,c->argv[2], rv);
     }
 
     addReplyBulkCBuffer(c, value, val_len);
@@ -1940,15 +1934,30 @@ static void ds_hgetCommand(redisClient *c, int set) {
 
 }
 
-void rl_hget(redisClient *c) {
+void ds_hget(redisClient *c) {
+    ds_hgetCommand(c, 0);
+    return;
+}
+
+static void rl_hgetCommand(redisClient *c, int set) {
     robj *o;
 
     if ((o = lookupKeyRead(c->db, c->argv[1])) != NULL) {
         addHashFieldToReply(c, o, c->argv[2]);
         return;
     }
-    ds_hsetCommand(c, 1);
+    ds_hgetCommand(c, set);
 
+}
+
+void rl_hget(redisClient *c) {
+    rl_hgetCommand(c, 0);
+    return;
+}
+
+void rl_hgetset(redisClient *c) {
+    rl_hgetCommand(c, 1);
+    return;
 }
 
 void ds_incrby(redisClient *c) {
@@ -2149,4 +2158,5 @@ void ds_close() {
     leveldb_options_destroy(server.ds_options);
     leveldb_cache_destroy(server.ds_cache);
 }
+
 
