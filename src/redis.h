@@ -516,6 +516,9 @@ struct redisServer {
 	uint16_t     ds_max_open_files;
 	uint16_t     ds_block_restart_interval;
 	char         *ds_path;
+
+    uint32_t     rl_ttl;
+    uint32_t     rl_ttlcheck;
     
     /* General */
     redisDb *db;
@@ -1041,6 +1044,7 @@ robj *lookupKeyWrite(redisDb *db, robj *key);
 robj *lookupKeyReadOrReply(redisClient *c, robj *key, robj *reply);
 robj *lookupKeyWriteOrReply(redisClient *c, robj *key, robj *reply);
 void dbAdd(redisDb *db, robj *key, robj *val);
+void checkRlTTL(redisDb *db, robj *key); 
 void dbOverwrite(redisDb *db, robj *key, robj *val);
 void setKey(redisDb *db, robj *key, robj *val);
 int dbExists(redisDb *db, robj *key);
@@ -1081,6 +1085,7 @@ void echoCommand(redisClient *c);
 void setCommand(redisClient *c);
 void setnxCommand(redisClient *c);
 void setexCommand(redisClient *c);
+void setnexCommand(redisClient *c);
 void psetexCommand(redisClient *c);
 void getCommand(redisClient *c);
 void delCommand(redisClient *c);
@@ -1181,6 +1186,8 @@ void hmsetCommand(redisClient *c);
 void hmgetCommand(redisClient *c);
 void hdelCommand(redisClient *c);
 void hlenCommand(redisClient *c);
+int hashTypeGetFromZiplist(robj *o, robj *field, unsigned char **vstr, unsigned int *vlen,  long long *vll);
+int hashTypeGetFromHashTable(robj *o, robj *field, robj **value); 
 void zremrangebyrankCommand(redisClient *c);
 void zunionstoreCommand(redisClient *c);
 void zinterstoreCommand(redisClient *c);
@@ -1277,6 +1284,9 @@ void rl_hdel(redisClient *c);
 void rl_mset(redisClient *c);
 void rl_getset(redisClient *c);
 void rl_hgetset(redisClient *c);
+void rl_hmget(redisClient *c);
+void rl_hmset(redisClient *c);
+void rl_mget(redisClient *c);
 
 
 #define redisDebug(fmt, ...) \

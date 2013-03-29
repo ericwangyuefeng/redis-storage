@@ -1068,6 +1068,7 @@ static void ds_getCommand(redisClient *c, int set) {
         robj *rv;
         rv = createStringObject(value, val_len);
         setKey(c->db, c->argv[1], rv);
+        checkRlTTL(c->db, c->argv[1]);
     }
 
     addReplyBulkCBuffer(c, value, val_len);
@@ -1083,17 +1084,33 @@ void ds_get(redisClient *c) {
     return;
 }
 
+void checkRlTTL(redisDb *db, robj *key) {
+    if(server.rl_ttl) {
+        if(server.rl_ttlcheck >= server.rl_ttl) {
+            return;
+        }
+        long long expire = getExpire(db,key);                                  
+        if(expire == -1 || expire-mstime() < server.rl_ttlcheck) {                         
+            expire = server.rl_ttl * 1000;                                                                            
+            setExpire(db, key, mstime()+expire);
+        }
+    }
+}
+
+
 static void rl_getCommand(redisClient *c, int set) {
     //从redis里取数据
     robj *o;
 
     if ((o = lookupKeyRead(c->db, c->argv[1])) == NULL) {
         ds_getCommand(c, set);
+        checkRlTTL(c->db, c->argv[1]); 
         return;
     }
 
     if (o->type == REDIS_STRING) {
         addReplyBulk(c, o);
+        checkRlTTL(c->db, c->argv[1]); 
         return;
     }
 
@@ -1155,6 +1172,43 @@ void ds_mset(redisClient *c) {
 void rl_mset(redisClient *c) {
     if(ds_msetCommand(c, 0)) {
         msetCommand(c);
+    }
+}
+
+void rl_mget(redisClient *c) {
+    int i;
+    size_t val_len;
+    char *err, *value;
+    addReplyMultiBulkLen(c,c->argc-1);
+    for (i = 1; i < c->argc; i++) {
+        robj *o = lookupKeyRead(c->db,c->argv[i]);
+        if (o == NULL) {
+            err = NULL;
+            value = NULL;
+            val_len = 0;
+            value = leveldb_get(server.ds_db, server.roptions, c->argv[i]->ptr, sdslen((sds) c->argv[i]->ptr), &val_len, &err);
+            if (err != NULL) {
+                addReplyError(c, err);
+                leveldb_free(err);
+                leveldb_free(value);
+                return;
+            } else if (val_len > 0) {
+                o = createStringObject(value, val_len);
+                leveldb_free(value);
+                value = NULL;
+                addReplyBulk(c,o);
+            } else {
+                addReply(c,shared.nullbulk);
+            }
+        } else {
+            if (o->type != REDIS_STRING) {
+                addReply(c,shared.nullbulk);
+                return;
+            } else {
+                addReplyBulk(c,o);
+            }
+        }
+
     }
 }
 
@@ -1334,7 +1388,8 @@ void ds_hmget(redisClient *c) {
     addReplySds(c, ret);
 }
 
-void ds_hmset(redisClient *c) {
+
+static int ds_hmsetCommand(redisClient *c, int ret) {
     int i;
     sds keyword;
     char *key, *field, *value;
@@ -1343,7 +1398,7 @@ void ds_hmset(redisClient *c) {
 
     if ((c->argc % 2) != 0) {
         addReply(c, shared.nullbulk);
-        return;
+        return 0; 
     }
 
     keyword = sdsempty();
@@ -1373,11 +1428,23 @@ void ds_hmset(redisClient *c) {
     if (err != NULL) {
         addReplyError(c, err);
         leveldb_free(err);
-        return;
+        return 0;
     }
-    addReply(c, shared.ok);
+    if(ret) {
+        addReply(c, shared.ok);
+    }
 
-    return;
+    return 1;
+}
+
+void ds_hmset(redisClient *c) {
+    ds_hmsetCommand(c, 1);
+}
+
+void rl_hmset(redisClient *c) {
+    if(ds_hmsetCommand(c, 0)) {
+        hmsetCommand(c);
+    }
 }
 
 void ds_hset(redisClient *c) {
@@ -1508,6 +1575,7 @@ void rl_hset(redisClient *c) {
 
 
     hsetCommand(c);
+    checkRlTTL(c->db, c->argv[1]); 
 }
 
 void rl_hdel(redisClient *c) {
@@ -1944,6 +2012,7 @@ static void rl_hgetCommand(redisClient *c, int set) {
 
     if ((o = lookupKeyRead(c->db, c->argv[1])) != NULL) {
         addHashFieldToReply(c, o, c->argv[2]);
+        checkRlTTL(c->db, c->argv[1]); 
         return;
     }
     ds_hgetCommand(c, set);
@@ -1958,6 +2027,153 @@ void rl_hget(redisClient *c) {
 void rl_hgetset(redisClient *c) {
     rl_hgetCommand(c, 1);
     return;
+}
+
+void rl_hmget(reddisClient *c) {
+    robj *o;
+    int i;
+
+    /* Don't abort when the key cannot be found. Non-existing keys are empty
+     * hashes, where HMGET should respond with a series of null bulks. */
+    o = lookupKeyRead(c->db, c->argv[1]);
+    if (o != NULL && o->type != REDIS_HASH) {
+        addReply(c, shared.wrongtypeerr);
+        return;
+    }
+
+    if (o == NULL) {
+        ds_hmget(c);
+        return;
+    }
+
+    sds keyword, str, ret;
+    size_t val_len;
+    char *key, *err = NULL, *lvalue = NULL;
+
+
+    //addReplyMultiBulkLen(c, c->argc-2);
+
+    key = (char *) c->argv[1]->ptr;
+    keyword = sdsempty();
+
+
+    str = sdsempty();
+
+    for (i = 2; i < c->argc; i++) {
+        int ret;
+
+        if (o->encoding == REDIS_ENCODING_ZIPLIST) {
+            unsigned char *vstr = NULL;
+            unsigned int vlen = UINT_MAX;
+            long long vll = LLONG_MAX;
+
+            ret = hashTypeGetFromZiplist(o, c->argv[i], &vstr, &vlen, &vll);
+            if (ret < 0) {
+                err = NULL;
+                lvalue = NULL;
+                val_len = 0;
+
+                sdsclear(keyword);
+                keyword = sdscatlen(keyword, KEY_PREFIX_HASH, KEY_PREFIX_LENGTH);
+                keyword = sdscat(keyword, key);
+                keyword = sdscatlen(keyword, MEMBER_PREFIX, MEMBER_PREFIX_LENGTH);
+                keyword = sdscat(keyword, c->argv[i]->ptr);
+
+                lvalue = leveldb_get(server.ds_db, server.roptions, keyword, sdslen(keyword), &val_len, &err);
+                if (err != NULL) {
+                    sdsfree(keyword);
+                    leveldb_free(lvalue);
+                    addReplyError(c, err);
+                    leveldb_free(err);
+                    sdsfree(str);
+                    return;
+                } else if (val_len > 0) {
+
+                    str = sdscatprintf(str, "$%zu\r\n", val_len);
+                    str = sdscatlen(str, value, val_len);
+                    str = sdscatlen(str, "\r\n", 2);
+
+                    leveldb_free(lvalue);
+                    lvalue = NULL;
+                } else {
+                    //addReply(c,shared.nullbulk);
+                    str = sdscatlen(str, "$-1\r\n", 5); //nullbulk
+                }
+            } else {
+                if (vstr) {
+                    size_t len = vlen;
+                    str = sdscatprintf(str, "$%zu\r\n", len);
+                    str = sdscatlen(str, vstr, vlen);
+                    str = sdscatlen(str, "\r\n", 2);
+                } else {
+
+                    char buf[64];
+                    size_t len = ll2string(buf,64,vll);
+                    str = sdscatprintf(str, "$%zu\r\n", len);
+                    str = sdscatlen(str, buf, len);
+                    str = sdscatlen(str, "\r\n", 2);
+
+                }
+            }
+
+        } else if (o->encoding == REDIS_ENCODING_HT) {
+            robj *value;
+
+            ret = hashTypeGetFromHashTable(o, c->argv[i], &value);
+            if (ret < 0) {
+                //addReply(c, shared.nullbulk);
+                err = NULL;
+                lvalue = NULL;
+                val_len = 0;
+
+                sdsclear(keyword);
+                keyword = sdscatlen(keyword, KEY_PREFIX_HASH, KEY_PREFIX_LENGTH);
+                keyword = sdscat(keyword, key);
+                keyword = sdscatlen(keyword, MEMBER_PREFIX, MEMBER_PREFIX_LENGTH);
+                keyword = sdscat(keyword, c->argv[i]->ptr);
+
+                lvalue = leveldb_get(server.ds_db, server.roptions, keyword, sdslen(keyword), &val_len, &err);
+                if (err != NULL) {
+                    sdsfree(keyword);
+                    leveldb_free(lvalue);
+                    addReplyError(c, err);
+                    leveldb_free(err);
+                    sdsfree(str);
+                    return;
+                } else if (val_len > 0) {
+
+                    str = sdscatprintf(str, "$%zu\r\n", val_len);
+                    str = sdscatlen(str, lvalue, val_len);
+                    str = sdscatlen(str, "\r\n", 2);
+
+                    leveldb_free(lvalue);
+                    lvalue = NULL;
+                } else {
+                    //addReply(c,shared.nullbulk);
+                    str = sdscatlen(str, "$-1\r\n", 5); //nullbulk
+                }
+            } else {
+                size_t len = sizeof(value->ptr);
+                str = sdscatprintf(str, "$%zu\r\n", len);
+                str = sdscatlen(str, value->ptr, sdslen((sds) value->ptr));
+                str = sdscatlen(str, "\r\n", 2);
+            }
+
+        } else {
+            redisPanic("Unknown hash encoding");
+        }
+
+        
+    }
+
+    sdsfree(keyword);
+
+    ret = sdsempty();
+    ret = sdscatprintf(ret, "*%d\r\n", c->argc - 2);
+    ret = sdscat(ret, str);
+    sdsfree(str);
+
+    addReplySds(c, ret);
 }
 
 void ds_incrby(redisClient *c) {
@@ -2072,6 +2288,8 @@ void rl_set(redisClient *c) {
 
     //存到redis
     setCommand(c);
+    checkRlTTL(c->db, c->argv[1]); 
+
 }
 
 void ds_delete(redisClient *c) {

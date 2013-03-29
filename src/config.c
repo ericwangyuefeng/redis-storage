@@ -139,6 +139,14 @@ void loadServerConfigFromString(char *config) {
 		{
             server.ds_path = zstrdup(argv[1]);
         }
+		else if (!strcasecmp(argv[0],"rl:ttl") && argc == 2)
+        {
+            server.rl_ttl = atoi(argv[1]);
+        }
+		else if (!strcasecmp(argv[0],"rl:ttlcheck") && argc == 2)
+        {
+            server.rl_ttlcheck = atoi(argv[1]);
+        }
         else if (!strcasecmp(argv[0],"port") && argc == 2) {
             server.port = atoi(argv[1]);
             if (server.port < 0 || server.port > 65535) {

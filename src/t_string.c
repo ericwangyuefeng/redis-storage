@@ -75,6 +75,11 @@ void setnxCommand(redisClient *c) {
     setGenericCommand(c,1,c->argv[1],c->argv[2],NULL,0);
 }
 
+void setnexCommand(redisClient *c) {
+    c->argv[3] = tryObjectEncoding(c->argv[3]);
+    setGenericCommand(c,1,c->argv[1],c->argv[3],c->argv[2],UNIT_SECONDS);
+}
+
 void setexCommand(redisClient *c) {
     c->argv[3] = tryObjectEncoding(c->argv[3]);
     setGenericCommand(c,0,c->argv[1],c->argv[3],c->argv[2],UNIT_SECONDS);
