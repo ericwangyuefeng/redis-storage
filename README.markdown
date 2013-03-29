@@ -1,10 +1,11 @@
 更新说明
 =========
+
+<pre>
 新增配置项：
 rl:ttl 0        ( >0时，强制设置redis里key的过期时间，仅对rl系列命令有效  
 rl:ttlcheck 0   (当key的ttl在此范围内被读取，则过期期间重设置为rl:ttl ) 
 
-<pre>
 rl系列命令：(同时操作redis和leveldb系列命令)
 rl_get key            (从redis或leveldb取值, 优先顺序：redis > leveldb)
 rl_set key val        (往redis和leveldb写值, 优先顺序：leveldb > redis, leveldb如果失败，将中断往redis写，返回错误)
