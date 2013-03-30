@@ -2029,7 +2029,7 @@ void rl_hgetset(redisClient *c) {
     return;
 }
 
-void rl_hmget(reddisClient *c) {
+void rl_hmget(redisClient *c) {
     robj *o;
     int i;
 
@@ -2090,7 +2090,7 @@ void rl_hmget(reddisClient *c) {
                 } else if (val_len > 0) {
 
                     str = sdscatprintf(str, "$%zu\r\n", val_len);
-                    str = sdscatlen(str, value, val_len);
+                    str = sdscatlen(str, lvalue, val_len);
                     str = sdscatlen(str, "\r\n", 2);
 
                     leveldb_free(lvalue);
