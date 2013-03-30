@@ -4,7 +4,7 @@
 <pre>
 新增配置项：
 rl:ttl 0        ( 单位：秒，大于0时会强制设置redis里key的过期时间，仅对rl系列命令有效) 
-rl:ttlcheck 0   (当key的ttl在小于此值时，则过期期间重设置为rl:ttl ) 
+rl:ttlcheck 0   (当key的ttl在小于此值时被读取到，则过期期间重设置为rl:ttl ) 
 
 rl系列命令：(同时操作redis和leveldb系列命令)
 rl_get key            (从redis或leveldb取值, 优先顺序：redis > leveldb)
