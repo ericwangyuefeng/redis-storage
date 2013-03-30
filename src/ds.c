@@ -1447,7 +1447,7 @@ void rl_hmset(redisClient *c) {
     }
 }
 
-void ds_hset(redisClient *c) {
+static int ds_hsetCommand(redisClient *c, int ret) {
     sds str;
     char *key, *field, *value, *err;
     leveldb_writebatch_t *wb;
@@ -1477,13 +1477,20 @@ void ds_hset(redisClient *c) {
     if (err != NULL) {
         addReplyError(c, err);
         leveldb_free(err);
+        return 0;
     } else {
         //addReply(c,shared.ok);
         // keep the same return type as redis's hset
         // TODO: how to distinguish the create(return 1) and update(return 0) ?
-        addReplyLongLong(c, 1);
+        if(ret) {
+            addReplyLongLong(c, 1);
+        }
+        return 1;
     }
-    return;
+}
+
+void ds_hset(redisClient *c) {
+    ds_hsetCommand(c, 1);
 }
 
 /**
@@ -1547,35 +1554,11 @@ void ds_hsetnx(redisClient *c) {
 }
 
 void rl_hset(redisClient *c) {
-    sds str;
-    char *key, *field, *value, *err;
-    leveldb_writebatch_t *wb;
-
-    key = (char *) c->argv[1]->ptr;
-    field = (char *) c->argv[2]->ptr;
-    value = (char *) c->argv[3]->ptr;
-
-    wb = leveldb_writebatch_create();
-
-    str = sdsempty();
-    str = sdscpy(str, key);
-    str = sdscatlen(str, "*", 1);
-
-    leveldb_writebatch_put(wb, str, sdslen(str), "1", 1);
-
-    sdsclear(str);
-    str = sdscpy(str, key);
-    str = sdscatlen(str, "*", 1);
-    str = sdscat(str, field);
-    leveldb_writebatch_put(wb, str, sdslen(str), value, sdslen((sds) value));
-
-    leveldb_write(server.ds_db, server.woptions, wb, &err);
-    leveldb_writebatch_destroy(wb);
-    sdsfree(str);
-
-
-    hsetCommand(c);
-    checkRlTTL(c->db, c->argv[1]); 
+    
+    if(ds_hsetCommand(c, 0)) {
+        hsetCommand(c);
+        checkRlTTL(c->db, c->argv[1]); 
+    }
 }
 
 void rl_hdel(redisClient *c) {
