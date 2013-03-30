@@ -52,7 +52,7 @@ void replicationFeedSlaves(list *slaves, int dictid, robj **argv, int argc) {
         if (slave->replstate == REDIS_REPL_WAIT_BGSAVE_START) continue;
 
         /* Feed slaves that are waiting for the initial SYNC (so these commands
-         * are queued in the output buffer until the intial SYNC completes),
+         * are queued in the output buffer until the initial SYNC completes),
          * or are already in sync with the master. */
         if (slave->slaveseldb != dictid) {
             robj *selectcmd;
@@ -115,7 +115,7 @@ void replicationFeedMonitors(redisClient *c, list *monitors, int dictid, robj **
 }
 
 void syncCommand(redisClient *c) {
-    /* ignore SYNC if aleady slave or in monitor mode */
+    /* ignore SYNC if already slave or in monitor mode */
     if (c->flags & REDIS_SLAVE) return;
 
     /* Refuse SYNC requests if we are a slave but the link with our master
@@ -232,7 +232,7 @@ void sendBulkToSlave(aeEventLoop *el, int fd, void *privdata, int mask) {
     if (slave->repldboff == 0) {
         /* Write the bulk write count before to transfer the DB. In theory here
          * we don't know how much room there is in the output buffer of the
-         * socket, but in pratice SO_SNDLOWAT (the minimum count for output
+         * socket, but in practice SO_SNDLOWAT (the minimum count for output
          * operations) will never be smaller than the few bytes we need. */
         sds bulkcount;
 
@@ -275,7 +275,7 @@ void sendBulkToSlave(aeEventLoop *el, int fd, void *privdata, int mask) {
     }
 }
 
-/* This function is called at the end of every backgrond saving.
+/* This function is called at the end of every background saving.
  * The argument bgsaveerr is REDIS_OK if the background saving succeeded
  * otherwise REDIS_ERR is passed to the function.
  *
@@ -579,11 +579,16 @@ void syncWithMaster(aeEventLoop *el, int fd, void *privdata, int mask) {
             goto error;
         }
 
-        /* We don't care about the reply, it can be +PONG or an error since
-         * the server requires AUTH. As long as it replies correctly, it's
-         * fine from our point of view. */
-        if (buf[0] != '-' && buf[0] != '+') {
-            redisLog(REDIS_WARNING,"Unexpected reply to PING from master.");
+        /* We accept only two replies as valid, a positive +PONG reply
+         * (we just check for "+") or an authentication error.
+         * Note that older versions of Redis replied with "operation not
+         * permitted" instead of using a proper error code, so we test
+         * both. */
+        if (buf[0] != '+' &&
+            strncmp(buf,"-NOAUTH",7) != 0 &&
+            strncmp(buf,"-ERR operation not permitted",28) != 0)
+        {
+            redisLog(REDIS_WARNING,"Error reply to PING from master: '%s'",buf);
             goto error;
         } else {
             redisLog(REDIS_NOTICE,
@@ -800,7 +805,7 @@ void replicationCron(void) {
      * So slaves can implement an explicit timeout to masters, and will
      * be able to detect a link disconnection even if the TCP connection
      * will not actually go down. */
-    if (!(server.cronloops % (server.repl_ping_slave_period * REDIS_HZ))) {
+    if (!(server.cronloops % (server.repl_ping_slave_period * server.hz))) {
         listIter li;
         listNode *ln;
 
