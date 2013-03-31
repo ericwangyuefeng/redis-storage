@@ -9,21 +9,21 @@ rl:ttlcheck 0   (当key的ttl在小于此值时被读取到，则过期期间重
 rl系列命令：(同时操作redis和leveldb系列命令)
 =======string数据操作======
 rl_get key            (从redis或leveldb取值, 优先顺序：redis > leveldb)
+rl_getset key         (返回同rl_get, 当leveldb有值，redis无值时，会回写到redis)
+rl_mget k1 k2 k3      (取redis和leveldb的并集，优先级：redis>leveldb)
+rl_mgetset k1 k2 k3   (返回同rl_mget, 当leveldb有值，redis无值，会回写到redis)
 rl_set key val        (往redis和leveldb写值, 优先顺序：leveldb > redis, leveldb如果失败，将中断往redis写，返回错误)
 rl_mset k1 v1 k2 v2   (往redis和leveldb批量写值, 优先顺序：leveldb > redis, leveldb如果失败，将中断往redis写，返回错误)
-rl_getset key         (当leveldb有值，redis无值时，此命令会返回值，并把值写回到redis)
 rl_del k1 k2 k3       (往redis和leveldb删值, 优先顺序：leveldb > redis)
-rl_mget k1 k2 k3      (取redis和leveldb的并集，优先级：redis>leveldb)
-rl_mgetset k1 k2 k3   (返回同rl_mget, 当leveldb有值，redis无值，会回到到redis)
 
 ========hash数据操作========
-rl_hget key hk   
-rl_hset key hk hv
-rl_hgetset  key hashkey
-rl_hdel  key hk1 hk2 hk3 (往redis和leveldb删值, 优先顺序：leveldb > redis)
-rl_hmget key hk1 hk2  (取redis和leveldb的并集，优先级：redis>leveldb)
-rl_hmset key hk1 hv1 hk2 hv2
-rl_hmgetset k1 k2 k3   (返回同rl_hmget, 当leveldb有值，redis无值，会回到到redis)
+rl_hget key hk                (从redis或leveldb取值, 优先顺序：redis > leveldb)
+rl_hgetset  key hk            (返回同rl_hget, 当leveldb有值，redis无值时，会回写到redis)
+rl_hmget key hk1 hk2          (往redis和leveldb批量写值，优先级：redis>leveldb)
+rl_hmgetset k1 k2 k3          (返回同rl_hmget, 当leveldb有值，redis无值，会回写到redis)
+rl_hset key hk hv             (往redis和leveldb写值, 优先顺序：leveldb > redis, leveldb如果失败，将中断往redis写，返回错误)
+rl_hmset key hk1 hv1 hk2 hv2   (取redis和leveldb的并集，优先级：redis>leveldb)
+rl_hdel  key hk1 hk2 hk3      (往redis和leveldb删值, 优先顺序：leveldb > redis)
 
 ds系列命令:
 ds_hlen
