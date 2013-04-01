@@ -2013,8 +2013,47 @@ static void rl_hgetCommand(redisClient *c, int set) {
     robj *o;
 
     if ((o = lookupKeyRead(c->db, c->argv[1])) != NULL) {
-        addHashFieldToReply(c, o, c->argv[2]);
-        checkRlTTL(c->db, c->argv[1]); 
+        //addHashFieldToReply(c, o, c->argv[2]);
+        //checkRlTTL(c->db, c->argv[1]); 
+        if(o->type != REDIS_HASH) {
+            addReply(c, shared.wrongtypeerr);
+            return;
+        }
+
+        int ret;
+
+        if (o->encoding == REDIS_ENCODING_ZIPLIST) {
+            unsigned char *vstr = NULL;
+            unsigned int vlen = UINT_MAX;
+            long long vll = LLONG_MAX;
+
+            ret = hashTypeGetFromZiplist(o, c->argv[2], &vstr, &vlen, &vll);
+            if (ret < 0) {
+                ds_hgetCommand(c, set);
+            } else {
+                if (vstr) {
+                    addReplyBulkCBuffer(c, vstr, vlen);
+                } else {
+                    addReplyBulkLongLong(c, vll);
+                }
+                checkRlTTL(c->db, c->argv[1]); 
+            }
+
+        } else if (o->encoding == REDIS_ENCODING_HT) {
+            robj *value;
+
+            ret = hashTypeGetFromHashTable(o, c->argv[2], &value);
+            if (ret < 0) {
+                //addReply(c, shared.nullbulk);
+                ds_hgetCommand(c, set);
+                checkRlTTL(c->db, c->argv[1]); 
+            } else {
+                addReplyBulk(c, value);
+            }
+
+        } else {
+            redisPanic("Unknown hash encoding");
+        }
         return;
     }
     ds_hgetCommand(c, set);
