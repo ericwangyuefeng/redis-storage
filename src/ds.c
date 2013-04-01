@@ -2134,7 +2134,7 @@ static void rl_hmgetCommand(redisClient *c, int set) {
                 } else {
                     addReplyBulkLongLong(c, vll);
                 }
-                checkRlTTL(c->db, c->argv[i]); 
+                
             }
 
         } else if (o->encoding == REDIS_ENCODING_HT) {
@@ -2165,7 +2165,6 @@ static void rl_hmgetCommand(redisClient *c, int set) {
                 }
             } else {
                 addReplyBulk(c, value);
-                checkRlTTL(c->db, c->argv[i]); 
             }
 
         } else {
