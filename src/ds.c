@@ -1083,18 +1083,15 @@ robj *ds_hgetToRobj(char *key, char *field, char **err) {
     sds keyword;
     size_t val_len;
     char *value = NULL;
-    char *lerr = NULL;
     keyword = sdsempty();
     keyword = sdscatlen(keyword, KEY_PREFIX_HASH, KEY_PREFIX_LENGTH);
     keyword = sdscat(keyword, key);
     keyword = sdscatlen(keyword, MEMBER_PREFIX, MEMBER_PREFIX_LENGTH);
     keyword = sdscat(keyword, field);
-    value = leveldb_get(server.ds_db, server.roptions, keyword, sdslen(keyword), &val_len, &lerr);
+    value = leveldb_get(server.ds_db, server.roptions, keyword, sdslen(keyword), &val_len, err);
     sdsfree(keyword);
-    if (lerr != NULL) {
-        leveldb_free(lerr);
+    if (err != NULL) {
         leveldb_free(value);
-        err = &lerr;
         return NULL;
     } else if (value == NULL) {
         return NULL;
@@ -1380,6 +1377,7 @@ static void ds_hmgetCommand(redisClient *c, int set) {
         o = ds_hgetToRobj(key, (char *) c->argv[i]->ptr, &err);
         if(err != NULL) {
             addReplyError(c, err);
+            leveldb_free(err);
             return;
         }
         if(o == NULL) {
@@ -2072,20 +2070,19 @@ void rl_hgetset(redisClient *c) {
 
 static void rl_hmgetCommand(redisClient *c, int set) {
     robj *o;
-    int i;
     o = lookupKeyRead(c->db, c->argv[1]);
-    if (o != NULL){
-        if(o->type != REDIS_HASH) {
-            addReply(c, shared.wrongtypeerr);
-            return;
-        }
-        checkRlTTL(c->db, c->argv[1]);
-    }
-
     if (o == NULL) {
         ds_hmgetCommand(c, set);
         return;
     }
+
+    if(o->type != REDIS_HASH) {
+        addReply(c, shared.wrongtypeerr);
+        return;
+    }
+    checkRlTTL(c->db, c->argv[1]);
+
+    int i;
     char *key, *err = NULL;
     addReplyMultiBulkLen(c, c->argc-2);
 
@@ -2111,6 +2108,7 @@ static void rl_hmgetCommand(redisClient *c, int set) {
                 robj *vo = ds_hgetToRobj(key, (char *) c->argv[i]->ptr, &err);
                 if(err != NULL) {
                     addReplyError(c, err);
+                    leveldb_free(err);
                     return;
                 }
                 if(vo == NULL) {
@@ -2147,6 +2145,7 @@ static void rl_hmgetCommand(redisClient *c, int set) {
                 robj *vo = ds_hgetToRobj(key, (char *) c->argv[i]->ptr, &err);
                 if(err != NULL) {
                     addReplyError(c, err);
+                    leveldb_free(err);
                     return;
                 }
                 if(vo == NULL) {
