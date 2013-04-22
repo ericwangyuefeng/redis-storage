@@ -125,10 +125,6 @@ void loadServerConfigFromString(char *config) {
 		{
             server.ds_lru_cache = strtoul(argv[1],NULL,10);
         }
-        else if (!strcasecmp(argv[0],"ds:block_cache_size") && argc == 2)
-		{
-            server.ds_block_cache_size = strtoul(argv[1],NULL,10);
-        }
 		else if (!strcasecmp(argv[0],"ds:write_buffer_size") && argc == 2)
 		{
             server.ds_write_buffer_size = strtoul(argv[1],NULL,10);

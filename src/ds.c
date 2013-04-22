@@ -12,7 +12,7 @@
 void ds_init() {
     char *err = NULL;
 
-    server.ds_cache = leveldb_cache_create_lru(server.ds_lru_cache);
+    server.ds_cache = leveldb_cache_create_lru(server.ds_lru_cache * 1048576);
     server.ds_options = leveldb_options_create();
 
     server.policy = leveldb_filterpolicy_create_bloom(10);
@@ -24,10 +24,10 @@ void ds_init() {
     leveldb_options_set_error_if_exists(server.ds_options, server.ds_error_if_exists);
     leveldb_options_set_cache(server.ds_options, server.ds_cache);
     leveldb_options_set_info_log(server.ds_options, NULL);
-    leveldb_options_set_write_buffer_size(server.ds_options, server.ds_write_buffer_size);
+    leveldb_options_set_write_buffer_size(server.ds_options, server.ds_write_buffer_size * 1048576);
     leveldb_options_set_paranoid_checks(server.ds_options, server.ds_paranoid_checks);
     leveldb_options_set_max_open_files(server.ds_options, server.ds_max_open_files);
-    leveldb_options_set_block_size(server.ds_options, server.ds_block_cache_size);
+    leveldb_options_set_block_size(server.ds_options, server.ds_block_size * 1024);
     leveldb_options_set_block_restart_interval(server.ds_options, server.ds_block_restart_interval);
     leveldb_options_set_compression(server.ds_options, leveldb_snappy_compression);
 
