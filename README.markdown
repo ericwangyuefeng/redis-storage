@@ -97,12 +97,12 @@ redis.conf
 ds:create_if_missing 1                //if the specified database didn't exist will create a new one
 ds:error_if_exists 0                  //if the opened database exsits will throw exception
 ds:paranoid_checks 0
-ds:block_cache_size 10000
-ds:write_buffer_size 100000000       //写缓存大小
-ds:block_size 4096
-ds:max_open_files 8000               //leveldb最多可以使用的檔案數，一個檔案可以儲存 2MB 的資料。
+ds:ds_lru_cache 200                   //单位MB
+ds:write_buffer_size 64               //单位MB
+ds:block_size 32                      //单位KB
+ds:max_open_files 4000
 ds:block_restart_interval 16
-ds:path /usr/local/redis/db/leveldb  //leveldb save path
+ds:path ./leveldb
 </pre>
 
 
