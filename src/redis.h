@@ -513,7 +513,6 @@ struct redisServer {
     uint16_t     ds_create_if_missing;
 	uint16_t     ds_error_if_exists;
 	uint16_t     ds_paranoid_checks;
-	uint32_t     ds_block_cache_size;
 	uint32_t     ds_write_buffer_size;
 	uint32_t     ds_block_size;
 	uint16_t     ds_max_open_files;
