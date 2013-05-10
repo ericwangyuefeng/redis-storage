@@ -90,7 +90,7 @@ void ds_exists(redisClient *c) {
 
     ret = sdsempty();
     ret = sdscatprintf(ret, "*%d\r\n", c->argc - 1);
-    ret = sdscat(ret, str);
+    ret = sdscatsds(ret, str);
     addReplySds(c, ret);
     sdsfree(str);
     return;
@@ -114,9 +114,9 @@ void ds_hexists(redisClient *c) {
     for (i = 2; i < c->argc; i++) {
         sdsclear(key);
         key = sdscatlen(key, KEY_PREFIX_HASH, KEY_PREFIX_LENGTH);
-        key = sdscat(key, c->argv[1]->ptr);
+        key = sdscatsds(key, c->argv[1]->ptr);
         key = sdscatlen(key, MEMBER_PREFIX, MEMBER_PREFIX_LENGTH);
-        key = sdscat(key, c->argv[i]->ptr);
+        key = sdscatsds(key, c->argv[i]->ptr);
 
         leveldb_iter_seek(iter, key, sdslen(key));
         if (leveldb_iter_valid(iter)) {
@@ -147,7 +147,7 @@ void ds_hexists(redisClient *c) {
 
     ret = sdsempty();
     ret = sdscatprintf(ret, "*%d\r\n", c->argc - 2);
-    ret = sdscat(ret, str);
+    ret = sdscatsds(ret, str);
     addReplySds(c, ret);
     sdsfree(str);
     return;
@@ -1036,7 +1036,7 @@ void ds_mget(redisClient *c) {
 
     ret = sdsempty();
     ret = sdscatprintf(ret, "*%d\r\n", c->argc - 1);
-    ret = sdscat(ret, str);
+    ret = sdscatsds(ret, str);
 
     sdsfree(str);
 
@@ -1085,9 +1085,9 @@ robj *ds_hgetToRobj(char *key, char *field, char **err) {
     char *value = NULL;
     keyword = sdsempty();
     keyword = sdscatlen(keyword, KEY_PREFIX_HASH, KEY_PREFIX_LENGTH);
-    keyword = sdscat(keyword, key);
+    keyword = sdscatsds(keyword, key);
     keyword = sdscatlen(keyword, MEMBER_PREFIX, MEMBER_PREFIX_LENGTH);
-    keyword = sdscat(keyword, field);
+    keyword = sdscatsds(keyword, field);
     value = leveldb_get(server.ds_db, server.roptions, keyword, sdslen(keyword), &val_len, err);
     sdsfree(keyword);
     if (err != NULL) {
@@ -1261,9 +1261,9 @@ void ds_hincrby(redisClient *c) {
     val_len = 0;
     keyword = sdsempty();
     keyword = sdscatlen(keyword, KEY_PREFIX_HASH, KEY_PREFIX_LENGTH);
-    keyword = sdscat(keyword, c->argv[1]->ptr);
+    keyword = sdscatsds(keyword, c->argv[1]->ptr);
     keyword = sdscatlen(keyword, MEMBER_PREFIX, MEMBER_PREFIX_LENGTH);
-    keyword = sdscat(keyword, c->argv[2]->ptr);
+    keyword = sdscatsds(keyword, c->argv[2]->ptr);
 
     value = leveldb_get(server.ds_db, server.roptions, keyword, sdslen(keyword), &val_len, &err);
     if (err != NULL) {
@@ -1326,9 +1326,9 @@ void ds_mhget(redisClient *c) {
 
         sdsclear(keyword);
         keyword = sdscatlen(keyword, KEY_PREFIX_HASH, KEY_PREFIX_LENGTH);
-        keyword = sdscat(keyword, c->argv[i]->ptr);
+        keyword = sdscatsds(keyword, c->argv[i]->ptr);
         keyword = sdscatlen(keyword, MEMBER_PREFIX, MEMBER_PREFIX_LENGTH);
-        keyword = sdscat(keyword, c->argv[i + 1]->ptr);
+        keyword = sdscatsds(keyword, c->argv[i + 1]->ptr);
 
         //fprintf(stderr,"K:%s\n",keyword);
 
@@ -1359,7 +1359,7 @@ void ds_mhget(redisClient *c) {
 
     ret = sdsempty();
     ret = sdscatprintf(ret, "*%d\r\n", (c->argc - 1) / 2);
-    ret = sdscat(ret, str);
+    ret = sdscatsds(ret, str);
     sdsfree(str);
 
     addReplySds(c, ret);
@@ -1423,7 +1423,7 @@ static int ds_hmsetCommand(redisClient *c, int ret) {
     key = (char *) c->argv[1]->ptr;
 
     keyword = sdscatlen(keyword, KEY_PREFIX_HASH, KEY_PREFIX_LENGTH);
-    keyword = sdscat(keyword, key);
+    keyword = sdscatsds(keyword, key);
     keyword = sdscatlen(keyword, MEMBER_PREFIX, MEMBER_PREFIX_LENGTH);
     leveldb_writebatch_put(wb, keyword, sdslen(keyword), "1", 1);
     for (i = 2; i < c->argc; i++) {
@@ -1432,9 +1432,9 @@ static int ds_hmsetCommand(redisClient *c, int ret) {
 
         sdsclear(keyword);
         keyword = sdscatlen(keyword, KEY_PREFIX_HASH, KEY_PREFIX_LENGTH);
-        keyword = sdscat(keyword, key);
+        keyword = sdscatsds(keyword, key);
         keyword = sdscatlen(keyword, MEMBER_PREFIX, MEMBER_PREFIX_LENGTH);
-        keyword = sdscat(keyword, field);
+        keyword = sdscatsds(keyword, field);
         leveldb_writebatch_put(wb, keyword, sdslen(keyword), value, sdslen((sds) value));
     }
     sdsfree(keyword);
@@ -1478,13 +1478,13 @@ static int ds_hsetCommand(redisClient *c, int ret) {
 
     str = sdsempty();
     str = sdscatlen(str, KEY_PREFIX_HASH, KEY_PREFIX_LENGTH);
-    str = sdscat(str, key);
+    str = sdscatsds(str, key);
     str = sdscatlen(str, MEMBER_PREFIX, MEMBER_PREFIX_LENGTH);
 
     leveldb_writebatch_put(wb, str, sdslen(str), "1", 1);
 
     // append member
-    str = sdscat(str, field);
+    str = sdscatsds(str, field);
     leveldb_writebatch_put(wb, str, sdslen(str), value, sdslen((sds) value));
 
     err = NULL;
@@ -1528,7 +1528,7 @@ void ds_hsetnx(redisClient *c) {
     val_len = 0;
     keyword = sdsempty();
     keyword = sdscatlen(keyword, KEY_PREFIX_HASH, KEY_PREFIX_LENGTH);
-    keyword = sdscat(keyword, c->argv[1]->ptr);
+    keyword = sdscatsds(keyword, c->argv[1]->ptr);
     keyword = sdscatlen(keyword, MEMBER_PREFIX, MEMBER_PREFIX_LENGTH);
 
     wb = leveldb_writebatch_create();
@@ -1536,7 +1536,7 @@ void ds_hsetnx(redisClient *c) {
     leveldb_writebatch_put(wb, keyword, sdslen(keyword), "1", 1);
 
     // append hash field
-    keyword = sdscat(keyword, c->argv[2]->ptr);
+    keyword = sdscatsds(keyword, c->argv[2]->ptr);
 
     value = leveldb_get(server.ds_db, server.roptions, keyword, sdslen(keyword), &val_len, &err);
     if (err != NULL) {
@@ -1620,7 +1620,7 @@ void ds_hgetall(redisClient *c) {
     str = sdsempty();
 
     str = sdscatlen(str, KEY_PREFIX_HASH, KEY_PREFIX_LENGTH);
-    str = sdscat(str, c->argv[1]->ptr);
+    str = sdscatsds(str, c->argv[1]->ptr);
     str = sdscatlen(str, MEMBER_PREFIX, MEMBER_PREFIX_LENGTH);
     len = sdslen(str);
     keyword = zmalloc(len + 1);
@@ -1688,7 +1688,7 @@ void ds_hkeys(redisClient *c) {
     str = sdsempty();
 
     str = sdscatlen(str, KEY_PREFIX_HASH, KEY_PREFIX_LENGTH);
-    str = sdscat(str, c->argv[1]->ptr);
+    str = sdscatsds(str, c->argv[1]->ptr);
     str = sdscatlen(str, MEMBER_PREFIX, MEMBER_PREFIX_LENGTH);
     len = sdslen(str);
     keyword = zmalloc(len + 1);
@@ -1753,7 +1753,7 @@ void ds_hvals(redisClient *c) {
     str = sdsempty();
 
     str = sdscatlen(str, KEY_PREFIX_HASH, KEY_PREFIX_LENGTH);
-    str = sdscat(str, c->argv[1]->ptr);
+    str = sdscatsds(str, c->argv[1]->ptr);
     str = sdscatlen(str, MEMBER_PREFIX, MEMBER_PREFIX_LENGTH);
     len = sdslen(str);
     keyword = zmalloc(len + 1);
@@ -1821,7 +1821,7 @@ void ds_hlen(redisClient *c) {
     str = sdsempty();
 
     str = sdscatlen(str, KEY_PREFIX_HASH, KEY_PREFIX_LENGTH);
-    str = sdscat(str, c->argv[1]->ptr);
+    str = sdscatsds(str, c->argv[1]->ptr);
     str = sdscatlen(str, MEMBER_PREFIX, MEMBER_PREFIX_LENGTH);
     len = sdslen(str);
     keyword = zmalloc(len + 1);
@@ -1881,7 +1881,7 @@ void ds_hdel(redisClient *c) {
     //delete hashtable key
     if (c->argc < 3) {
         keyword = sdscatlen(keyword, KEY_PREFIX_HASH, KEY_PREFIX_LENGTH);
-        keyword = sdscat(keyword, c->argv[1]->ptr);
+        keyword = sdscatsds(keyword, c->argv[1]->ptr);
         keyword = sdscatlen(keyword, MEMBER_PREFIX, MEMBER_PREFIX_LENGTH);
 
 
@@ -1933,9 +1933,9 @@ void ds_hdel(redisClient *c) {
     for (i = 2; i < c->argc; i++) {
         sdsclear(keyword);
         keyword = sdscatlen(keyword, KEY_PREFIX_HASH, KEY_PREFIX_LENGTH);
-        keyword = sdscat(keyword, c->argv[1]->ptr);
+        keyword = sdscatsds(keyword, c->argv[1]->ptr);
         keyword = sdscatlen(keyword, MEMBER_PREFIX, MEMBER_PREFIX_LENGTH);
-        keyword = sdscat(keyword, c->argv[i]->ptr);
+        keyword = sdscatsds(keyword, c->argv[i]->ptr);
         leveldb_writebatch_delete(wb, keyword, sdslen(keyword));
     }
 
@@ -1968,9 +1968,9 @@ static void ds_hgetCommand(redisClient *c, int set) {
 
     str = sdsempty();
     str = sdscatlen(str, KEY_PREFIX_HASH, KEY_PREFIX_LENGTH);
-    str = sdscat(str, key);
+    str = sdscatsds(str, key);
     str = sdscatlen(str, MEMBER_PREFIX, MEMBER_PREFIX_LENGTH);
-    str = sdscat(str, field);
+    str = sdscatsds(str, field);
     value = leveldb_get(server.ds_db, server.roptions, str, sdslen(str), &val_len, &err);
     if (err != NULL) {
         addReplyError(c, err);
@@ -2246,7 +2246,7 @@ void ds_append(redisClient *c) {
     if (val_len > 0) {
         recore = sdscpylen(recore, value, val_len);
     }
-    recore = sdscat(recore, c->argv[2]->ptr);
+    recore = sdscatsds(recore, c->argv[2]->ptr);
 
     leveldb_put(server.ds_db, server.woptions, c->argv[1]->ptr, sdslen((sds) c->argv[1]->ptr), recore, sdslen(recore), &err);
     if (err != NULL) {
