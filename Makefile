@@ -11,10 +11,9 @@ default: all
 init:
 	cd deps/gperftools-2.0 && ./configure --enable-minimal --enable-frame-pointers && make
 	cd deps/snappy-1.1.0 && ./configure && make
-	cp ./deps/snappy-1.1.0/.libs/libsnappy.so.1 /usr/local/lib
-	ldconfig
 	chmod +x deps/leveldb-1.10.0/build_detect_platform
 	cd deps/leveldb-1.10.0 && make
+	cp ./deps/snappy-1.1.0/.libs/libsnappy.so.1 /usr/local/lib
 	cp ./deps/leveldb-1.10.0/libleveldb.so.1 /usr/local/lib
 	ldconfig
 	
