@@ -175,7 +175,7 @@ EOF
 
     # Test whether Snappy library is installed
     # http://code.google.com/p/snappy/
-    $CXX $CXXFLAGS -I../snappy-1.1.0/ -x c++ - -o $CXXOUTPUT 2>/dev/null  <<EOF
+    $CXX $CXXFLAGS -x c++ - -o $CXXOUTPUT 2>/dev/null  <<EOF
       #include <snappy.h>
       int main() {}
 EOF
