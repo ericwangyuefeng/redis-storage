@@ -99,5 +99,6 @@ size_t rioWriteBulkLongLong(rio *r, long long l);
 size_t rioWriteBulkDouble(rio *r, double d);
 
 void rioGenericUpdateChecksum(rio *r, const void *buf, size_t len);
+void rioSetAutoSync(rio *r, off_t bytes);
 
 #endif
