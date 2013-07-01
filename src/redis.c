@@ -1480,9 +1480,7 @@ void initServer() {
     scriptingInit();
     slowlogInit();
     bioInit();
-    if(server.ds_open)  {
-        ds_init();
-    }
+    ds_init();
 }
 
 /* Populates the Redis Command Table starting from the hard coded list

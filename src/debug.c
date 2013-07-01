@@ -724,9 +724,7 @@ void sigsegvHandler(int sig, siginfo_t *info, void *secret) {
     act.sa_handler = SIG_DFL;
     sigaction (sig, &act, NULL);
     kill(getpid(),sig);
-    if(server.ds_open) {
-        ds_close();
-    }
+    ds_close();
 }
 #endif /* HAVE_BACKTRACE */
 
