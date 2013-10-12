@@ -50,6 +50,10 @@ void ds_init() {
 }
 
 void ds_exists(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     int i;
     char *err;
     leveldb_iterator_t *iter;
@@ -100,6 +104,10 @@ void ds_exists(redisClient *c) {
 }
 
 void ds_hexists(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     int i;
     sds key;
     char *err;
@@ -161,6 +169,10 @@ void ds_hexists(redisClient *c) {
  * return: integer
  */
 void ds_keys_count(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     char *err;
 
     const char *key;
@@ -257,6 +269,10 @@ void ds_keys_count(redisClient *c) {
  * return: integer
  */
 void ds_hkeys_count(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     char *err = NULL;
 
     const char *key;
@@ -360,6 +376,10 @@ void ds_hkeys_count(redisClient *c) {
  *  4. ds_keys_asc key 100
  */
 void ds_keys_asc(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     sds str, header;
     char *err;
 
@@ -491,6 +511,10 @@ void ds_keys_asc(redisClient *c) {
  *  4. ds_hkeys_asc key 100
  */
 void ds_hkeys_asc(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     sds str, header, skeyh;
     char *err;
 
@@ -638,6 +662,10 @@ void ds_hkeys_asc(redisClient *c) {
  *  4. ds_keys_desc key 100
  */
 void ds_keys_desc(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     sds str, header;
     char *err;
 
@@ -811,6 +839,10 @@ void ds_keys_desc(redisClient *c) {
  *  4. ds_hkeys_desc key 100
  */
 void ds_hkeys_desc(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     sds str, header, skeyh;
     char *err;
 
@@ -1003,6 +1035,10 @@ void ds_hkeys_desc(redisClient *c) {
 }
 
 void ds_mget(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     int i;
     size_t val_len;
     char *err, *value;
@@ -1110,11 +1146,15 @@ robj *ds_hgetToRobj(char *key, char *field, char **err) {
 }
 
 void ds_get(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     ds_getCommand(c, 0);
     return;
 }
 
-void checkRlTTL(redisDb *db, robj *key) {
+static void checkRlTTL(redisDb *db, robj *key) {
     if(server.rl_ttl) {
         if(server.rl_ttlcheck >= server.rl_ttl) {
             return;
@@ -1149,11 +1189,19 @@ static void rl_getCommand(redisClient *c, int set) {
 }
 
 void rl_get(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     rl_getCommand(c, 0);
     return;
 }
 
 void rl_getset(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     rl_getCommand(c, 1);
 }
 
@@ -1194,12 +1242,20 @@ static int ds_msetCommand(redisClient *c, int reply) {
 }
 
 void ds_mset(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     ds_msetCommand(c, 1);
     return;
 }
 
 
 void rl_mset(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     if(ds_msetCommand(c, 0)) {
         msetCommand(c);
     }
@@ -1247,14 +1303,26 @@ static void rl_mgetCommand(redisClient *c, int set) {
 }
 
 void rl_mget(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     rl_mgetCommand(c, 0);
 }
 
 void rl_mgetset(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     rl_mgetCommand(c, 1);
 }
 
 void ds_hincrby(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     char *value;
     sds keyword, data;
 
@@ -1308,6 +1376,10 @@ void ds_hincrby(redisClient *c) {
  * ds_mhget key field [key field ...]
  */
 void ds_mhget(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     int i;
     sds keyword, str, ret;
     size_t val_len;
@@ -1372,6 +1444,10 @@ void ds_mhget(redisClient *c) {
 }
 
 static void ds_hmgetCommand(redisClient *c, int set) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     int i;
     char *key, *err = NULL;
     addReplyMultiBulkLen(c, c->argc-2);
@@ -1408,6 +1484,10 @@ static void ds_hmgetCommand(redisClient *c, int set) {
 }
 
 void ds_hmget(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     ds_hmgetCommand(c, 0);
 }
 
@@ -1461,10 +1541,18 @@ static int ds_hmsetCommand(redisClient *c, int ret) {
 }
 
 void ds_hmset(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     ds_hmsetCommand(c, 1);
 }
 
 void rl_hmset(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     if(ds_hmsetCommand(c, 0)) {
         hmsetCommand(c);
         checkRlTTL(c->db, c->argv[1]);
@@ -1514,6 +1602,10 @@ static int ds_hsetCommand(redisClient *c, int ret) {
 }
 
 void ds_hset(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     ds_hsetCommand(c, 1);
 }
 
@@ -1523,6 +1615,10 @@ void ds_hset(redisClient *c) {
  * return 0 (already exists)
  */
 void ds_hsetnx(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     char *value;
     sds keyword;
 
@@ -1578,7 +1674,10 @@ void ds_hsetnx(redisClient *c) {
 }
 
 void rl_hset(redisClient *c) {
-    
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     if(ds_hsetCommand(c, 0)) {
         hsetCommand(c);
         checkRlTTL(c->db, c->argv[1]); 
@@ -1586,6 +1685,10 @@ void rl_hset(redisClient *c) {
 }
 
 void rl_hdel(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     robj *o;
     int j, deleted = 0;
 
@@ -1614,6 +1717,10 @@ void rl_hdel(redisClient *c) {
 }
 
 void ds_hgetall(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     sds str, header;
     char *keyword = NULL, *err;
 
@@ -1682,6 +1789,10 @@ void ds_hgetall(redisClient *c) {
 }
 
 void ds_hkeys(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     sds str, header;
     char *keyword = NULL, *err;
 
@@ -1747,6 +1858,10 @@ void ds_hkeys(redisClient *c) {
 }
 
 void ds_hvals(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     sds str, header;
     char *keyword = NULL, *err;
 
@@ -1815,6 +1930,10 @@ void ds_hvals(redisClient *c) {
 }
 
 void ds_hlen(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     sds str;
     char *keyword = NULL, *err;
 
@@ -1872,6 +1991,10 @@ void ds_hlen(redisClient *c) {
 }
 
 void ds_hdel(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     const char *key;
     size_t key_len, i;
 
@@ -2009,6 +2132,10 @@ static void ds_hgetCommand(redisClient *c, int set) {
 }
 
 void ds_hget(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     ds_hgetCommand(c, 0);
     return;
 }
@@ -2065,11 +2192,19 @@ static void rl_hgetCommand(redisClient *c, int set) {
 }
 
 void rl_hget(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     rl_hgetCommand(c, 0);
     return;
 }
 
 void rl_hgetset(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     rl_hgetCommand(c, 1);
     return;
 }
@@ -2180,14 +2315,26 @@ static void rl_hmgetCommand(redisClient *c, int set) {
 }
 
 void rl_hmget(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     rl_hmgetCommand(c, 0);
 }
 
 void rl_hmgetset(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     rl_hmgetCommand(c, 1);
 }
 
 void ds_incrby(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     sds data;
     char *value;
     int64_t val, recore;
@@ -2229,6 +2376,10 @@ void ds_incrby(redisClient *c) {
 }
 
 void ds_append(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     sds recore;
     char *value;
 
@@ -2268,6 +2419,10 @@ void ds_append(redisClient *c) {
 }
 
 void ds_set(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     char *key, *value;
     char *err = NULL;
 
@@ -2284,6 +2439,10 @@ void ds_set(redisClient *c) {
 }
 
 void rl_set(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     char *key, *value;
     char *err = NULL;
 
@@ -2304,6 +2463,10 @@ void rl_set(redisClient *c) {
 }
 
 void ds_delete(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     int i;
     char *key;
     char *err = NULL;
@@ -2342,6 +2505,10 @@ void ds_delete(redisClient *c) {
 }
 
 void rl_delete(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
     int i;
     char *key;
     char *err = NULL;

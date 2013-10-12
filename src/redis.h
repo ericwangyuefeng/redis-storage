@@ -1054,7 +1054,7 @@ robj *lookupKeyWrite(redisDb *db, robj *key);
 robj *lookupKeyReadOrReply(redisClient *c, robj *key, robj *reply);
 robj *lookupKeyWriteOrReply(redisClient *c, robj *key, robj *reply);
 void dbAdd(redisDb *db, robj *key, robj *val);
-void checkRlTTL(redisDb *db, robj *key); 
+//void checkRlTTL(redisDb *db, robj *key); 
 void dbOverwrite(redisDb *db, robj *key, robj *val);
 void setKey(redisDb *db, robj *key, robj *val);
 int dbExists(redisDb *db, robj *key);
