@@ -49,6 +49,19 @@ void ds_init() {
     leveldb_writeoptions_set_sync(server.woptions, 0);
 }
 
+static void checkRlTTL(redisDb *db, robj *key) {
+    if(server.rl_ttl) {
+        if(server.rl_ttlcheck >= server.rl_ttl) {
+            return;
+        }
+        long long expire = getExpire(db,key);                                  
+        if(expire == -1 || expire-mstime() < server.rl_ttlcheck) {                         
+            expire = server.rl_ttl * 1000;                                                                            
+            setExpire(db, key, mstime()+expire);
+        }
+    }
+}
+
 void ds_exists(redisClient *c) {
     if(!server.ds_open) {
         addReplyError(c,"REDIS_STORAGE CLOSED");
@@ -1152,19 +1165,6 @@ void ds_get(redisClient *c) {
     }
     ds_getCommand(c, 0);
     return;
-}
-
-static void checkRlTTL(redisDb *db, robj *key) {
-    if(server.rl_ttl) {
-        if(server.rl_ttlcheck >= server.rl_ttl) {
-            return;
-        }
-        long long expire = getExpire(db,key);                                  
-        if(expire == -1 || expire-mstime() < server.rl_ttlcheck) {                         
-            expire = server.rl_ttl * 1000;                                                                            
-            setExpire(db, key, mstime()+expire);
-        }
-    }
 }
 
 
