@@ -18,6 +18,7 @@ init:
 	cd deps/leveldb-1.10.0 && make
 	rm -rf /usr/local/lib/libleveldb.so.1
 	cp ./deps/leveldb-1.10.0/libleveldb.so.1 /usr/local/lib
+	cp ./redis_storage.so.conf /etc/ld.so.conf.d/redis_storage.conf
 	ldconfig
 	
 install:
