@@ -1119,6 +1119,7 @@ void brpoplpushCommand(redisClient *c) {
 void lallCommand(redisClient *c) {
     robj *o;
     long llen;
+    long start =0;
     double del;
 
     if ((o = lookupKeyReadOrReply(c,c->argv[1],shared.emptymultibulk)) == NULL
