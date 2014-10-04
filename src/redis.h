@@ -1185,6 +1185,7 @@ void discardCommand(redisClient *c);
 void blpopCommand(redisClient *c);
 void brpopCommand(redisClient *c);
 void brpoplpushCommand(redisClient *c);
+void lallCommand(redisClient *c);
 void appendCommand(redisClient *c);
 void strlenCommand(redisClient *c);
 void zrankCommand(redisClient *c);

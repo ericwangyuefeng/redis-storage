@@ -1114,3 +1114,55 @@ void brpoplpushCommand(redisClient *c) {
         }
     }
 }
+
+
+void lallCommand(redisClient *c) {
+    robj *o;
+    long llen;
+    double del;
+
+    if ((o = lookupKeyReadOrReply(c,c->argv[1],shared.emptymultibulk)) == NULL
+         || checkType(c,o,REDIS_LIST)) return;
+
+    getDoubleFromObject(c->argv[2], &del);
+    
+
+    llen = listTypeLength(o);
+
+    /* Return the result in form of a multi-bulk reply */
+    addReplyMultiBulkLen(c,llen);
+    if (o->encoding == REDIS_ENCODING_ZIPLIST) {
+        unsigned char *p = ziplistIndex(o->ptr,start);
+        unsigned char *vstr;
+        unsigned int vlen;
+        long long vlong;
+
+        while(llen--) {
+            ziplistGet(p,&vstr,&vlen,&vlong);
+            if (vstr) {
+                addReplyBulkCBuffer(c,vstr,vlen);
+            } else {
+                addReplyBulkLongLong(c,vlong);
+            }
+            p = ziplistNext(o->ptr,p);
+        }
+    } else if (o->encoding == REDIS_ENCODING_LINKEDLIST) {
+        listNode *ln;
+
+        /* If we are nearest to the end of the list, reach the element
+         * starting from tail and going backward, as it is faster. */
+        if (start > llen/2) start -= llen;
+        ln = listIndex(o->ptr,start);
+
+        while(llen--) {
+            addReplyBulk(c,ln->value);
+            ln = ln->next;
+        }
+    } else {
+        redisPanic("List encoding is not LINKEDLIST nor ZIPLIST!");
+    }
+
+    if(del) {  //取出即删除
+        dbDelete(c->db,c->argv[1]);
+    }
+}
