@@ -1115,17 +1115,14 @@ void brpoplpushCommand(redisClient *c) {
     }
 }
 
-
-void lallCommand(redisClient *c) {
+static void allGenericCommand(redisClient *c, int where) {
     robj *o;
     long llen;
-    long start =0;
-    double del;
+
+    int pos = (where == REDIS_HEAD) ? 0 : -1;
 
     if ((o = lookupKeyReadOrReply(c,c->argv[1],shared.emptymultibulk)) == NULL
          || checkType(c,o,REDIS_LIST)) return;
-
-    getDoubleFromObject(c->argv[2], &del);
     
 
     llen = listTypeLength(o);
@@ -1133,7 +1130,7 @@ void lallCommand(redisClient *c) {
     /* Return the result in form of a multi-bulk reply */
     addReplyMultiBulkLen(c,llen);
     if (o->encoding == REDIS_ENCODING_ZIPLIST) {
-        unsigned char *p = ziplistIndex(o->ptr,start);
+        unsigned char *p;
         unsigned char *vstr;
         unsigned int vlen;
         long long vlong;
@@ -1145,19 +1142,34 @@ void lallCommand(redisClient *c) {
             } else {
                 addReplyBulkLongLong(c,vlong);
             }
+            if(del) {
+                ziplistDelete(o->ptr,&p);
+            }
+
             p = ziplistNext(o->ptr,p);
+
+            p = ziplistIndex(subject->ptr, pos);
+            ziplistGet(p,&vstr,&vlen,&vlong);
+            if (vstr) {
+                addReplyBulkCBuffer(c,vstr,vlen);
+            } else {
+                addReplyBulkLongLong(c,vlong);
+            }
+            /* We only need to delete an element when it exists */
+            o->ptr = ziplistDelete(o->ptr,&p);
         }
     } else if (o->encoding == REDIS_ENCODING_LINKEDLIST) {
+        list *list = o->ptr;
         listNode *ln;
 
-        /* If we are nearest to the end of the list, reach the element
-         * starting from tail and going backward, as it is faster. */
-        if (start > llen/2) start -= llen;
-        ln = listIndex(o->ptr,start);
-
         while(llen--) {
+            if (where == REDIS_HEAD) {
+                ln = listFirst(list);
+            } else {
+                ln = listLast(list);
+            }
             addReplyBulk(c,ln->value);
-            ln = ln->next;
+            listDelNode(o->ptr,ln);
         }
     } else {
         redisPanic("List encoding is not LINKEDLIST nor ZIPLIST!");
@@ -1166,4 +1178,12 @@ void lallCommand(redisClient *c) {
     if(del) {  //取出即删除
         dbDelete(c->db,c->argv[1]);
     }
+}
+
+void lallCommand(redisClient *c) {
+    allGenericCommand(c, REDIS_HEAD);
+}
+
+void rallCommand(redisClient *c) {
+    allGenericCommand(c, REDIS_TAIL);
 }
