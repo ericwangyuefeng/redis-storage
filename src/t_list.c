@@ -1136,18 +1136,6 @@ static void allGenericCommand(redisClient *c, int where) {
         long long vlong;
 
         while(llen--) {
-            ziplistGet(p,&vstr,&vlen,&vlong);
-            if (vstr) {
-                addReplyBulkCBuffer(c,vstr,vlen);
-            } else {
-                addReplyBulkLongLong(c,vlong);
-            }
-            if(del) {
-                ziplistDelete(o->ptr,&p);
-            }
-
-            p = ziplistNext(o->ptr,p);
-
             p = ziplistIndex(subject->ptr, pos);
             ziplistGet(p,&vstr,&vlen,&vlong);
             if (vstr) {
@@ -1174,7 +1162,6 @@ static void allGenericCommand(redisClient *c, int where) {
     } else {
         redisPanic("List encoding is not LINKEDLIST nor ZIPLIST!");
     }
-
     
     dbDelete(c->db,c->argv[1]);
 }
