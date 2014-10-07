@@ -1175,9 +1175,8 @@ static void allGenericCommand(redisClient *c, int where) {
         redisPanic("List encoding is not LINKEDLIST nor ZIPLIST!");
     }
 
-    if(del) {  //取出即删除
-        dbDelete(c->db,c->argv[1]);
-    }
+    
+    dbDelete(c->db,c->argv[1]);
 }
 
 void lallCommand(redisClient *c) {
