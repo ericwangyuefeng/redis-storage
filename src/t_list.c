@@ -1136,7 +1136,7 @@ static void allGenericCommand(redisClient *c, int where) {
         long long vlong;
 
         while(llen--) {
-            p = ziplistIndex(subject->ptr, pos);
+            p = ziplistIndex(o->ptr, pos);
             ziplistGet(p,&vstr,&vlen,&vlong);
             if (vstr) {
                 addReplyBulkCBuffer(c,vstr,vlen);
