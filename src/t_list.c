@@ -1117,15 +1117,21 @@ void brpoplpushCommand(redisClient *c) {
 
 static void allGenericCommand(redisClient *c, int where) {
     robj *o;
-    long llen;
+    long llen, num;
 
     int pos = (where == REDIS_HEAD) ? 0 : -1;
 
     if ((o = lookupKeyReadOrReply(c,c->argv[1],shared.emptymultibulk)) == NULL
          || checkType(c,o,REDIS_LIST)) return;
-    
 
+    if(getLongFromObjectOrReply(c, c->argv[2], &num, NULL) != REDIS_OK) return;
+    
     llen = listTypeLength(o);
+
+    if(num <= 0 || num > llen) {
+        num = llen;
+    }
+    
 
     /* Return the result in form of a multi-bulk reply */
     addReplyMultiBulkLen(c,llen);
@@ -1135,7 +1141,7 @@ static void allGenericCommand(redisClient *c, int where) {
         unsigned int vlen;
         long long vlong;
 
-        while(llen--) {
+        while(num--) {
             p = ziplistIndex(o->ptr, pos);
             ziplistGet(p,&vstr,&vlen,&vlong);
             if (vstr) {
@@ -1150,7 +1156,7 @@ static void allGenericCommand(redisClient *c, int where) {
         list *list = o->ptr;
         listNode *ln;
 
-        while(llen--) {
+        while(num--) {
             if (where == REDIS_HEAD) {
                 ln = listFirst(list);
             } else {
@@ -1163,7 +1169,9 @@ static void allGenericCommand(redisClient *c, int where) {
         redisPanic("List encoding is not LINKEDLIST nor ZIPLIST!");
     }
     
-    dbDelete(c->db,c->argv[1]);
+    if(num >= llen) {
+        dbDelete(c->db,c->argv[1]);
+    }
 }
 
 void lallCommand(redisClient *c) {
