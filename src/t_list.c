@@ -1134,7 +1134,7 @@ static void allGenericCommand(redisClient *c, int where) {
     
 
     /* Return the result in form of a multi-bulk reply */
-    addReplyMultiBulkLen(c,llen);
+    addReplyMultiBulkLen(c,num);
     if (o->encoding == REDIS_ENCODING_ZIPLIST) {
         unsigned char *p;
         unsigned char *vstr;
