@@ -678,7 +678,7 @@ void hlenCommand(redisClient *c) {
     addReplyLongLong(c,hashTypeLength(o));
 }
 
-static void addHashIteratorCursorToReply(redisClient *c, hashTypeIterator *hi, int what) {
+void addHashIteratorCursorToReply(redisClient *c, hashTypeIterator *hi, int what) {
     if (hi->encoding == REDIS_ENCODING_ZIPLIST) {
         unsigned char *vstr = NULL;
         unsigned int vlen = UINT_MAX;
