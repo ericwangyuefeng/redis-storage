@@ -1788,6 +1788,79 @@ void ds_hgetall(redisClient *c) {
     return;
 }
 
+static void rl_HgetallCommand(redisClient *c, int flags) {
+    robj *o;
+
+    o = lookupKeyRead(c->db, c->argv[1]);
+    if (o == NULL) {
+        if (flags  == REDIS_HASH_KEY) {
+            ds_hkeys(c);
+        } else if (flags  == REDIS_HASH_VALUE) {
+            ds_hvals(c);
+        }else{
+            ds_hgetall(c);
+        }
+        return;
+    }
+
+    if(o->type != REDIS_HASH) {
+        addReply(c, shared.wrongtypeerr);
+        return;
+    }
+
+    checkRlTTL(c->db, c->argv[1]);
+
+
+    hashTypeIterator *hi;
+    int multiplier = 0;
+    int length, count = 0;
+
+    if (flags & REDIS_HASH_KEY) multiplier++;
+    if (flags & REDIS_HASH_VALUE) multiplier++;
+
+    length = hashTypeLength(o) * multiplier;
+    addReplyMultiBulkLen(c, length);
+
+    hi = hashTypeInitIterator(o);
+    while (hashTypeNext(hi) != REDIS_ERR) {
+        if (flags & REDIS_HASH_KEY) {
+            addHashIteratorCursorToReply(c, hi, REDIS_HASH_KEY);
+            count++;
+        }
+        if (flags & REDIS_HASH_VALUE) {
+            addHashIteratorCursorToReply(c, hi, REDIS_HASH_VALUE);
+            count++;
+        }
+    }
+
+    hashTypeReleaseIterator(hi);
+    redisAssert(count == length);
+}
+
+void rl_hkeysCommand(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
+    rl_HgetallCommand(c,REDIS_HASH_KEY);
+}
+
+void rl_hvalsCommand(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
+    rl_HgetallCommand(c,REDIS_HASH_VALUE);
+}
+
+void rl_hgetallCommand(redisClient *c) {
+    if(!server.ds_open) {
+        addReplyError(c,"REDIS_STORAGE CLOSED");
+        return;
+    }
+    rl_HgetallCommand(c,REDIS_HASH_KEY|REDIS_HASH_VALUE);
+}
+
 void ds_hkeys(redisClient *c) {
     if(!server.ds_open) {
         addReplyError(c,"REDIS_STORAGE CLOSED");
@@ -1988,6 +2061,25 @@ void ds_hlen(redisClient *c) {
 
     sdsfree(str);
     return;
+}
+
+void rl_hlen(redisClient *c) {
+    robj *o;
+
+    o = lookupKeyRead(c->db, c->argv[1]);
+    if (o == NULL) {
+        ds_hlen(c);
+        return;
+    }
+
+    if(o->type != REDIS_HASH) {
+        addReply(c, shared.wrongtypeerr);
+        return;
+    }
+
+    checkRlTTL(c->db, c->argv[1]);
+
+    addReplyLongLong(c,hashTypeLength(o));
 }
 
 void ds_hdel(redisClient *c) {
