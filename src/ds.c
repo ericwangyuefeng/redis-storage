@@ -1837,7 +1837,7 @@ static void rl_HgetallCommand(redisClient *c, int flags) {
     redisAssert(count == length);
 }
 
-void rl_hkeysCommand(redisClient *c) {
+void rl_hkeys(redisClient *c) {
     if(!server.ds_open) {
         addReplyError(c,"REDIS_STORAGE CLOSED");
         return;
@@ -1845,7 +1845,7 @@ void rl_hkeysCommand(redisClient *c) {
     rl_HgetallCommand(c,REDIS_HASH_KEY);
 }
 
-void rl_hvalsCommand(redisClient *c) {
+void rl_hvals(redisClient *c) {
     if(!server.ds_open) {
         addReplyError(c,"REDIS_STORAGE CLOSED");
         return;
@@ -1853,7 +1853,7 @@ void rl_hvalsCommand(redisClient *c) {
     rl_HgetallCommand(c,REDIS_HASH_VALUE);
 }
 
-void rl_hgetallCommand(redisClient *c) {
+void rl_hgetall(redisClient *c) {
     if(!server.ds_open) {
         addReplyError(c,"REDIS_STORAGE CLOSED");
         return;
