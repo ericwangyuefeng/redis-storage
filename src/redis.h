@@ -1229,7 +1229,7 @@ void timeCommand(redisClient *c);
 void bitopCommand(redisClient *c);
 void bitcountCommand(redisClient *c);
 void replconfCommand(redisClient *c);
-void addHashIteratorCursorToReply(redisClient *c, hashTypeIterator *hi, int what)
+void addHashIteratorCursorToReply(redisClient *c, hashTypeIterator *hi, int what);
 
 #if defined(__GNUC__)
 void *calloc(size_t count, size_t size) __attribute__ ((deprecated));
