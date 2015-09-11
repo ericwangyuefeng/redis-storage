@@ -154,5 +154,5 @@ Nginx 用户可使用`redis2-nginx-module`或者ngx_lua的`lua-resty-redis`库
 
 https://github.com/agentzh/redis2-nginx-module
 
-https://github.com/agentzh/lua-resty-redis
+https://github.com/agentzh/lua-resty-redis 111
 
